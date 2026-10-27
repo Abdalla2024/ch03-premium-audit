@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M5XJXNGBPK2F1NDDBY304XY6",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "skills/class-code-assistant/SKILL.md",
+    "skills/class-code-assistant/references/worksheet.md",
+    "skills/class-code-assistant/scripts/cca/render.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 17334,
+    "cache_read_tokens": 2124305,
+    "output_tokens": 7573,
+    "api_call_count": 7
+  }
+}
