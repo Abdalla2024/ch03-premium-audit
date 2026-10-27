@@ -177,8 +177,10 @@ def _employer_section(r, guide):
         out += [f"- {f['fact']} ({f['record']})" for f in ws["facts"]] + [""]
 
     if r.questionable:
-        out += ["### Questionable records (used as written, HP-15)", ""]
-        out += [f"- {detail}. Used as written; on the question list for the employer to confirm." for _, _, detail in r.questionable]
+        out += ["### Questionable records (used as written, HP-15)", "",
+                "Holiday entries are used as written and sent to the employer to confirm (HP-15). Each line says whether "
+                "the allocation rests on the entry.", ""]
+        out += [f"- {x.detail}. {x.effect}" for x in r.questionable]
         out.append("")
 
     out += ["### Open items: unresolved judgements", "",

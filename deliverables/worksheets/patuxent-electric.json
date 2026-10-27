@@ -20,16 +20,17 @@
   },
   "owners": {
     "PE-E01": {"included": true, "field_work": true, "field_code": "E-510",
-      "basis": "has not filed an election of exclusion (business-description.md); leads a crew on site most days and pulls wire (field-notes.md); signed in at job sites on 214 days (site-signin-log.csv)",
+      "basis": "has not filed an election of exclusion (business-description.md); leads a crew on site most days and pulls wire (field-notes.md); site-signin-log.csv shows sign-ins on 214 days: 160 at Solomons, Lexington Park and Huntingtown, and 54 at Prince Frederick, the town where the shop and office are (field-notes.md)",
       "records": ["business-description.md", "field-notes.md", "site-signin-log.csv"]}
   },
   "facts": [
     {"fact": "Seven people on the payroll register, including the owner, Raymond Dunmore, who has not filed an election of exclusion; no subcontractors in the period", "record": "business-description.md"},
     {"fact": "The owner leads a crew on site most days and pulls wire himself; the office administrator never goes to jobs", "record": "field-notes.md"},
-    {"fact": "site-signin-log.csv has 214 job-site sign-in days, all for Raymond Dunmore", "record": "site-signin-log.csv"},
+    {"fact": "site-signin-log.csv has sign-ins on 214 days, all for Raymond Dunmore: Solomons 60, Lexington Park 52, Huntingtown 48, Prince Frederick 54. The shop and office are in Prince Frederick (field-notes.md), so those 54 may not all be job sites; the 160 elsewhere and the field notes are enough to show field work", "record": "site-signin-log.csv"},
     {"fact": "Electricians on the Hagerstown job were paid a flat amount per day away on top of wages, in its own register column", "record": "field-notes.md, payroll-register.csv"}
   ],
   "confirmations": [
+    {"about": "Prince Frederick sign-ins", "question": "site-signin-log.csv: Raymond Dunmore signed in at Prince Frederick on 54 days, and the shop and office are in Prince Frederick. Please say which of those 54 days were at a customer job site. This does not change the allocation: his sign-ins at Solomons, Lexington Park and Huntingtown show field work either way."},
     {"about": "Subcontractors", "question": "Business description, APP-PE-0388: please confirm in writing that Patuxent Electric paid no subcontractors between 2025-07-07 and 2026-07-05."},
     {"about": "Application APP-PE-0388 note", "question": "Application APP-PE-0388: the application leaves travel pay out as an expense, and puts the owner's salary under the office code. Please send the per-day allowance policy and the travel day log (dates, worker and job) for the Hagerstown job, so the travel_days and travel_allowance_paid columns in payroll-register.csv can be confirmed. Daily allowances above 47.00 per day count as payroll."}
   ],

@@ -2,6 +2,7 @@
 
 import atexit
 import csv
+import datetime
 import json
 import shutil
 import sys
@@ -26,6 +27,10 @@ Edition of March 2030.
 **CG-01. Premium basis.** Not used.
 
 **CG-04. C-110 Clerical office employees.** Office work.
+
+**CG-11. R-310 Roofing.** Roofs.
+
+**CG-12. R-320 Siding and gutters.** Siding.
 
 **CG-30. Z-100 Field work.** Work at sites.
 
@@ -179,6 +184,78 @@ class RuleTests(unittest.TestCase):
                           {"F-710": (1, "200.00"), "F-720": (1, "100.00")})
                  .csv("gross-receipts.csv", ["month", "dine_in", "offsite"], [["2030-01", f"{100 - Decimal(offsite)}", offsite]]))
             self.assertEqual(e.run(ws).totals, expected, offsite)
+
+    def test_roof_siding_contractor_uses_15_roof_days(self):
+        # HP-16 (interview 3): 15 or more roof days -> whole pay R-310; fewer -> whole pay R-320. Not most days.
+        def ts(emp, roof, siding, start=1):
+            days = [datetime.date(2030, 1, 1) + datetime.timedelta(d) for d in range(start, start + roof + siding)]
+            return [[d.isoformat(), emp, emp, "J", "roofing" if i < roof else "siding", "8"] for i, d in enumerate(days)]
+        rows = ts("E1", 15, 100) + ts("E2", 14, 3) + ts("E3", 20, 0)
+        e = (Employer([["E1", "E1", "Siding", "100.00"], ["E2", "E2", "Roofer", "200.00"], ["E3", "E3", "Roofer", "300.00"]],
+                      {"R-310": (3, "600.00")})
+             .csv("crew-timesheets.csv", ["date", "employee_id", "name", "job_id", "work_type", "hours"], rows))
+        r = e.run({"employees": {i: person("R-310") for i in ("E1", "E2", "E3")},
+                   "work_type_codes": {"roofing": "R-310", "siding": "R-320"}})
+        self.assertEqual(r.totals, {"R-310": Decimal("400.00"), "R-320": Decimal("200.00")})
+        self.assertIn("HP-16", r.applied)
+        self.assertFalse(any("most recorded days" in o.proposal for o in r.open_items))
+
+    def test_holiday_entries_flagged_and_hp15_only_when_decisive(self):
+        # HP-15 (interviews 2 and 3): holiday entries in timesheets, route logs and sign-ins are used as written and
+        # flagged; HP-15 is listed as deciding something only when the allocation rests on the entry.
+        roof = [d.isoformat() for d in (datetime.date(2030, 12, 10) + datetime.timedelta(i) for i in range(14))]
+        rows = [[d, "E1", "A", "J", "roofing", "8"] for d in roof + ["2030-12-25"]]
+        rows += [["2030-11-0" + str(i), "E1", "A", "J", "siding", "8"] for i in range(1, 6)]
+        e = (Employer([["E1", "A", "Roofer", "500.00"]], {"R-310": (1, "500.00")})
+             .csv("crew-timesheets.csv", ["date", "employee_id", "name", "job_id", "work_type", "hours"], rows))
+        r = e.run({"employees": {"E1": person("R-310")}, "work_type_codes": {"roofing": "R-310", "siding": "R-320"}})
+        self.assertEqual(r.totals, {"R-310": Decimal("500.00")})  # 15 roof days counted as written
+        self.assertEqual(r.questionable[0].decisive, Decimal("500.00"))
+        self.assertIn("HP-15", r.applied)
+        self.assertTrue(any("2030-12-25" in t and "depends on this record" in t for _, t in r.questions))
+
+        signins = [[f"2030-03-0{d}", "E1", "A", "North lot"] for d in range(1, 7)] + [["2030-12-25", "E1", "A", "North lot"]]
+        e = (Employer([["E1", "A", "Clerk", "100.00"], ["E2", "B", "Crew", "300.00"]], {"C-110": (2, "400.00")})
+             .csv("site-signin-log.csv", ["date", "employee_id", "name", "site"], signins))
+        r = e.run({"employees": {"E1": person("C-110"), "E2": person("Z-100")}})
+        self.assertIsNone(r.questionable[0].decisive)  # six days remain without the holiday
+        self.assertNotIn("HP-15", r.applied)
+
+    def test_holiday_ride_that_makes_the_week_is_decisive(self):
+        routes = [["2030-12-24", "R1", "D1", "E1", "5"], ["2030-12-25", "R1", "D1", "E1", "5"]]
+        weekly = [["2030-12-23", "2030-12-29", "E1", "100.00"], ["2030-12-30", "2031-01-05", "E1", "50.00"]]
+        e = (Employer([["E1", "A", "Dispatcher", "150.00"]], {"C-110": (1, "150.00")})
+             .csv("route-log.csv", ["date", "route_id", "driver_id", "ride_along_id", "stops"], routes)
+             .csv("weekly-payroll.csv", ["week_start", "week_end", "employee_id", "gross_pay"], weekly))
+        r = e.run({"employees": {"E1": person("C-110")}, "route_code": "T-610"})
+        self.assertEqual(r.totals, {"C-110": Decimal("50.00"), "T-610": Decimal("100.00")})
+        self.assertEqual(r.questionable[0].decisive, Decimal("100.00"))
+
+    def test_owner_without_field_work_flat_amount_under_clerical(self):
+        # HP-3 (interview 3): the same flat figure, under C-110.
+        e = Employer([["E1", "Owner", "Owner", "120000.00"]], {"C-110": (1, "120000.00")})
+        r = e.run({"employees": {"E1": person("C-110")},
+                   "owners": {"E1": {"included": True, "field_work": False, "basis": "office only"}}})
+        self.assertEqual(r.totals, {"C-110": Decimal("63700.00")})
+        self.assertEqual(r.open_items, [])
+
+    def test_allowance_without_days_proposal_uses_the_only_fitting_rate(self):
+        e = Employer([["E1", "A", "Tech", "1000.00", "10", "650.00"], ["E2", "B", "Tech", "1000.00", "4", "188.00"],
+                      ["E3", "C", "Tech", "1000.00", "0", "390.00"]], {"Z-100": (3, "3000.00")}, travel=True)
+        r = e.run({"employees": {i: person("Z-100") for i in ("E1", "E2", "E3")}})
+        item = next(o for o in r.open_items if o.about == "C")
+        self.assertIn("all 390.00 of the allowance is payroll", item.proposal)  # allocated as practice stands
+        self.assertIn("exactly 6 days at 65.00", item.proposal)
+        self.assertIn("282.00 (6 x 47.00) is left out and 108.00 is payroll", item.proposal)
+
+    def test_audit_period_from_business_description_and_conflict_is_open_item(self):
+        e = Employer([["E1", "A", "Clerk", "100.00"]], {"C-110": (1, "100.00")})
+        (e.dir / "field-notes.md").write_text("Notes. Audit period February 1, 2030 to December 31, 2030.\n")
+        r = e.run({"employees": {"E1": person("C-110")}})
+        self.assertEqual(r.rec["period"], (datetime.date(2030, 1, 1), datetime.date(2030, 12, 31)))
+        self.assertEqual(r.rec["period_file"], "business-description.md")
+        self.assertTrue(any(o.about == "Audit period" for o in r.open_items))
+        self.assertTrue(any(about == "Audit period" for about, _ in r.questions))
 
     def test_allocation_reconciles_to_register_plus_adjustments(self):
         e = Employer([["E1", "Owner", "Owner", "1000.00", "0", "0.00"], ["E2", "B", "Tech", "10.00", "2", "100.00"]],

@@ -94,22 +94,29 @@ def load(folder):
     note = re.search(r'Employer\'s note:\s*"(.*?)"', text, re.S)
     rec["employer_note"] = " ".join(note.group(1).split()) if note else None
 
-    rec["period"] = None
-    for name in [n for n in ef.files if n.endswith(".md")] + [rec["register_file"]]:
-        m = PERIOD.search((ef.folder / name).read_text(encoding="utf-8"))
+    # The business description defines the audit period (house practice, interview 3). Other statements are compared.
+    desc = ef.find("business-description.md", "*description*.md")
+    stated = {}
+    for name in dict.fromkeys([desc] + [n for n in ef.files if n.endswith(".md")] + [rec["register_file"]]):
+        m = name and PERIOD.search((ef.folder / name).read_text(encoding="utf-8"))
         if m:
             ef.read.add(name)
-            start, end = (datetime.datetime.strptime(s, "%B %d, %Y").date() for s in m.groups())
-            rec["period"] = (start, end)
-            rec["period_file"] = name
-            break
-    if not rec["period"]:
+            stated[name] = tuple(datetime.datetime.strptime(s, "%B %d, %Y").date() for s in m.groups())
+    if not stated:
         raise RecordError(f"{ef.slug}: no 'Audit period <date> to <date>' statement found in the employer file")
+    rec["period_file"] = desc if desc in stated else next(iter(stated))
+    rec["period"] = stated[rec["period_file"]]
+    rec["period_issues"] = []
+    if rec["period_file"] != desc:
+        rec["period_issues"].append(f"the business description does not state the audit period; "
+                                    f"{rec['period_file']} does")
+    for name, p in stated.items():
+        if p != rec["period"]:
+            rec["period_issues"].append(f"{name} states {p[0].isoformat()} to {p[1].isoformat()}")
 
     for name in [n for n in ef.files if n.endswith(".md") and "note" in n]:
         rec["field_notes_file"] = name
         ef.read.add(name)
-    desc = ef.find("business-description.md", "*description*.md")
     if desc:
         ef.read.add(desc)
         rec["description_file"] = desc
