@@ -1,9 +1,10 @@
-"""Apply the classification guide and the audit team's house practice to one employer's records.
+"""Apply the classification guide and the audit team's confirmed house practice to one employer's records.
 
 The worksheet (written per employer by the analyst running the Skill) supplies the judgments the records cannot make on
-their own: the code that describes each person's actual duties, which code each type of crew work, job site and
-subcontracted trade falls under, and owner status. Everything that is arithmetic or a stated house rule is applied here,
-from the records, the same way for every employer.
+their own: the code that describes each person's actual duties, which code each type of crew work and subcontracted
+trade falls under, owner status, and which receipts columns are off-site catering. Everything that is arithmetic or a
+confirmed house rule (references/house-practice.md, HP-n) is applied here, from the records, the same way for every
+employer. Where a rule leaves a detail open, the Skill's reading (R-n) is applied and raised as an open item.
 """
 
 import datetime
@@ -15,6 +16,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from .records import CENT, day, money
 
 FIXED_HOLIDAYS = {(1, 1): "New Year's Day", (7, 4): "Independence Day", (12, 25): "Christmas Day"}
+ZERO = Decimal("0.00")
 
 
 class WorksheetError(ValueError):
@@ -62,6 +64,7 @@ class OpenItem:
     why: str
     records: list
     rule: str = "HP-10"
+    question: str = ""  # the employer question that would settle it (HP-10: open item for the employer to confirm)
 
 
 @dataclass
@@ -72,9 +75,13 @@ class Result:
     sub_lines: list = field(default_factory=list)
     adjustments: list = field(default_factory=list)
     open_items: list = field(default_factory=list)
+    questionable: list = field(default_factory=list)  # (about, record, detail): used as written, sent to the employer
     questions: list = field(default_factory=list)
     notes: list = field(default_factory=list)
+    applied: list = field(default_factory=list)  # confirmed rules (HP-n) that changed or decided something
     totals: dict = field(default_factory=dict)
+    governing_code: str | None = None
+    reconciliation: list = field(default_factory=list)
     inference: str = ""
 
     @property
@@ -83,7 +90,7 @@ class Result:
 
     def differences(self):
         codes = sorted(set(self.totals) | set(self.employer_split))
-        return {c: self.totals.get(c, Decimal("0.00")) - self.employer_split.get(c, Decimal("0.00")) for c in codes}
+        return {c: self.totals.get(c, ZERO) - self.employer_split.get(c, ZERO) for c in codes}
 
     @property
     def accepts_employer_split(self):
@@ -102,12 +109,12 @@ def fmt(amount):
 def infer_employer_codes(register, split):
     """Find the one assignment of register employees to the employer's codes that reproduces its split.
 
-    Returns (mapping or None, explanation). The application gives only a head count and payroll per code, so a
-    per-person reading of the employer's split is an inference and is labelled as one.
+    The application gives only a head count and payroll per code. The pairing is used only to explain where the first
+    pass differs from the employer; it never decides a classification (HP-1: not by application estimates).
     """
     codes = list(split)
     if len(codes) ** len(register) > 3_000_000:
-        return None, "too many employees to infer the employer's per-person split from its totals"
+        return None, "too many employees to pair the employer's split with people; it is compared by code only"
     hits = []
     for combo in itertools.product(codes, repeat=len(register)):
         counts, sums = Counter(combo), defaultdict(Decimal)
@@ -118,21 +125,20 @@ def infer_employer_codes(register, split):
         if all(sums[c] == split[c]["payroll"] for c in codes):
             hits.append(dict(zip((e["id"] for e in register), combo)))
             if len(hits) > 1:
-                return None, "more than one way to read the employer's split per person; it is compared by code only"
+                return None, "more than one pairing of people fits the employer's split; it is compared by code only"
     if not hits:
-        return None, ("no assignment of register wages reproduces the employer's split exactly; "
-                      "it is compared by code only")
-    return hits[0], ("the employer's per-person codes are inferred: exactly one assignment of the register's wages "
-                     "reproduces its reported head count and payroll for every code")
+        return None, "no pairing of register wages reproduces the employer's split exactly; it is compared by code only"
+    return hits[0], ("the application names no people; exactly one pairing of register wages reproduces its head count "
+                     "and payroll for every code, so 'Employer's code' shows that pairing. It explains differences "
+                     "only and decided no classification (HP-1)")
 
 
 def allocate(guide, hp, rec, ws):
     res = Result(rec, ws)
     clerical = hp["clerical_code"]
     threshold = int(hp["clerical_job_site_day_threshold"])
+    min_ride = int(hp["route_split_min_ride_days_per_week"])
     owner_flat = money(hp["owner_field_work_flat_payroll"])
-    sub_share = Decimal(hp["uninsured_subcontractor_payroll_share"])
-    allowance_cap = money(hp["out_of_town_daily_allowance_exclusion"])
     start, end = rec["period"]
     in_period = lambda d: start <= d <= end  # noqa: E731
     reg_file = rec["register_file"]
@@ -145,6 +151,10 @@ def allocate(guide, hp, rec, ws):
         except ValueError as exc:
             raise WorksheetError(f"{where}: {exc}") from None
         return code
+
+    def applied(rule):
+        if rule not in res.applied:
+            res.applied.append(rule)
 
     ws_people = ws.get("employees", {})
     missing = [e["id"] for e in rec["register"] if e["id"] not in ws_people]
@@ -186,56 +196,75 @@ def allocate(guide, hp, rec, ws):
         weekly[r["employee_id"]].append((day(r["week_start"]), day(r["week_end"]), money(r["gross_pay"])))
 
     work_codes = ws.get("work_type_codes", {})
-    site_codes = ws.get("site_codes", {})
     route_code = ws.get("route_code") and code_ok(ws["route_code"], "route_code")
     if ride_days and not route_code:
         raise WorksheetError(f"{rec['route_log_file']} records ride-alongs, but worksheet route_code is not filled in")
-    split_people, ride_people = [], []
+    split_people, pending, owners = [], [], []
 
+    # Pass 1: each person's own code from duties and time records.
     for e in rec["register"]:
         w = ws_people[e["id"]]
         duty = code_ok(w.get("duty_code") or "", f"employees.{e['id']}.duty_code")
         p = Person(e["id"], e["name"], e["position"], e["wages"], records=[reg_file] + w.get("records", []))
         owner = ws.get("owners", {}).get(e["id"])
 
-        if owner and owner.get("included") and owner.get("field_work"):
-            code = code_ok(owner.get("field_code") or duty, f"owners.{e['id']}.field_code")
+        if owner and owner.get("included"):
             p.records = _uniq(p.records + owner.get("records", []))
-            p.lines = [Line(code, owner_flat, f"Included owner who does field work ({owner['basis']}). Counted at the "
-                                              f"flat {fmt(owner_flat)} (HP-3) under the code for the work done (CG-05).")]
-            res.adjustments.append(Adjustment(
-                e["name"], "Owner counted at flat amount", owner_flat, code,
-                f"{reg_file} shows wages of {fmt(e['wages'])}. House practice counts an owner who does any field work at "
-                f"{fmt(owner_flat)}, under {code}, the code for the work done.", _uniq(p.records), "HP-3, CG-05"))
+            if owner.get("field_work"):
+                code = code_ok(owner.get("field_code") or duty, f"owners.{e['id']}.field_code")
+                p.lines = [Line(code, owner_flat, f"Working owner who does field work ({owner['basis']}). Counted at the "
+                                                  f"flat {fmt(owner_flat)}, regardless of actual wages, under the "
+                                                  f"employer's trade code {code} (HP-3).")]
+                res.adjustments.append(Adjustment(
+                    e["name"], "Owner counted at flat amount", owner_flat, code,
+                    f"{reg_file} shows wages of {fmt(e['wages'])}. A working owner who does any field work is counted "
+                    f"at {fmt(owner_flat)} regardless of actual wages, under the employer's trade code {code} "
+                    f"(difference {fmt(owner_flat - e['wages'])}).", _uniq(p.records), "HP-3"))
+                owners.append(p)
+                applied("HP-3")
+            else:
+                p.lines = [Line(clerical, e["wages"], f"Owner who never works in the field: {clerical} (HP-3). "
+                                                      f"Counted at register wages (reading R3).")]
+                res.open_items.append(OpenItem(
+                    e["name"], f"Count {e['name']} at the register wages of {fmt(e['wages'])} under {clerical}.",
+                    f"House practice puts an owner who never works in the field under {clerical} but does not state the "
+                    f"amount. The register wages are the only record of it.", [reg_file] + owner.get("records", []),
+                    "HP-3, R3",
+                    f"{e['name']} ({reg_file}): please confirm that {e['name']} did no field work in the audit period "
+                    f"and the {fmt(e['wages'])} of pay shown in {reg_file}."))
             res.people.append(p)
             continue
 
         final, basis = duty, w["basis"]
-        hours = timesheets.get(e["id"])
-        if hours:
-            by_code, by_type = defaultdict(Decimal), defaultdict(Decimal)
-            for r in hours:
+        rows = timesheets.get(e["id"])
+        if rows:
+            by_code, by_type = defaultdict(set), defaultdict(set)
+            for r in rows:
                 if r["work_type"] not in work_codes:
                     raise WorksheetError(f"work type {r['work_type']!r} in {rec['timesheets_file']} has no entry in "
                                          f"worksheet work_type_codes")
                 code = code_ok(work_codes[r["work_type"]], f"work_type_codes.{r['work_type']}")
-                by_code[code] += Decimal(r["hours"])
-                by_type[r["work_type"]] += Decimal(r["hours"])
-            ranked = sorted(by_code.items(), key=lambda kv: -kv[1])
-            leaders = [c for c, h in ranked if h == ranked[0][1]]
+                by_code[code].add(r["date"])
+                by_type[r["work_type"]].add(r["date"])
+            days_by_code = {c: len(d) for c, d in by_code.items()}
+            ranked = sorted(days_by_code.items(), key=lambda kv: -kv[1])
+            leaders = [c for c, n in ranked if n == ranked[0][1]]
             final = duty if duty in leaders else leaders[0]
-            mix = ", ".join(f"{t} {h:g} h" for t, h in sorted(by_type.items(), key=lambda kv: -kv[1]))
-            basis = (f"Crew timesheets: {mix}. The whole of the pay goes to {final}, the code with the most recorded "
-                     f"hours (HP-2: one person's pay is not split; reading A2).")
+            mix = ", ".join(f"{t} {len(d)} days" for t, d in sorted(by_type.items(), key=lambda kv: -len(kv[1])))
+            basis = (f"{rec['timesheets_file']}: {mix}. One person's pay is not split (HP-2) and tests are in days "
+                     f"(HP-13); the whole pay goes to {final}, the code with the most recorded days (reading R2).")
             p.records.append(rec["timesheets_file"])
             p.evidence = f"{rec['timesheets_file']} records {mix} for {e['name']}."
-            if len(by_code) > 1:
-                split_people.append((p, dict(by_code), final))
+            applied("HP-13")
+            if len(days_by_code) > 1:
+                split_people.append((p, days_by_code, final))
             if len(leaders) > 1:
                 res.open_items.append(OpenItem(
                     e["name"], f"Report all of {e['name']}'s pay under {final}.",
-                    f"The timesheets show equal hours under {', '.join(leaders)}, and house practice does not say how "
-                    f"to break a tie.", [rec["timesheets_file"]]))
+                    f"The timesheets show equal days under {', '.join(leaders)}, and house practice does not say how "
+                    f"to break a tie.", [rec["timesheets_file"]], "HP-10, R2",
+                    f"{e['name']} ({rec['timesheets_file']}): {p.evidence} Please confirm which work {e['name']} "
+                    f"mainly did during the audit period."))
         elif duty == clerical and site_days.get(e["id"]):
             days = site_days[e["id"]]
             p.records.append(rec["signins_file"])
@@ -244,51 +273,16 @@ def allocate(guide, hp, rec, ws):
                 f"{d.isoformat()} {', '.join(sorted(days[d]))}" for d in sorted(days)) + ".")
             for d in sorted(days):
                 if (d.month, d.day) in FIXED_HOLIDAYS:
-                    res.open_items.append(OpenItem(
-                        f"{e['name']}: sign-in on {d.isoformat()}",
-                        "Count the day as recorded, because the records decide (HP-7).",
-                        f"{rec['signins_file']} records {e['name']} at {', '.join(sorted(days[d]))} on "
-                        f"{FIXED_HOLIDAYS[(d.month, d.day)]}. This may be a recording error.", [rec["signins_file"]]))
+                    res.questionable.append((e["name"], rec["signins_file"],
+                                             f"{rec['signins_file']} records {e['name']} at {', '.join(sorted(days[d]))} "
+                                             f"on {d.isoformat()} ({FIXED_HOLIDAYS[(d.month, d.day)]})"))
+                    applied("HP-15")
             if len(days) < threshold:
-                basis += (f" {rec['signins_file']} shows {len(days)} job-site day(s) ({dates}), fewer than "
-                          f"{threshold}, so the person stays {clerical} (HP-4).")
+                basis += (f" {rec['signins_file']} shows {len(days)} job-site day(s) in the audit period ({dates}), "
+                          f"fewer than {threshold}, so the person stays {clerical} (HP-4).")
+                applied("HP-4")
             else:
-                unmapped = sorted({s for sites in days.values() for s in sites if s not in site_codes})
-                if unmapped:
-                    raise WorksheetError(f"site(s) {unmapped} in {rec['signins_file']} have no entry in worksheet "
-                                         f"site_codes (use null when no code in the guide describes the work there)")
-                code_days = Counter()
-                for sites in days.values():
-                    for c in {site_codes[s] for s in sites} - {None}:
-                        code_days[c] += 1
-                chosen = w.get("field_code")
-                ranked = code_days.most_common()
-                if not chosen and ranked:
-                    leaders = [c for c, n in ranked if n == ranked[0][1]]
-                    chosen = leaders[0] if len(leaders) == 1 else None
-                    if len(leaders) > 1:
-                        res.open_items.append(OpenItem(
-                            e["name"], f"Keep {e['name']} under {clerical} until the employer confirms the work at the sites.",
-                            f"The sites visited split evenly between {', '.join(leaders)}.", [rec["signins_file"]]))
-                site_mix = ", ".join(f"{c} {n} day(s)" for c, n in ranked) or "no code in the guide describes the site work"
-                if chosen:
-                    final = code_ok(chosen, f"employees.{e['id']}.field_code")
-                    basis = (f"{w['basis']} {rec['signins_file']} shows {len(days)} job-site days ({dates}), so the "
-                             f"person is not clerical (HP-4: {threshold} or more days). Days by site code: {site_mix}. "
-                             f"The person is reported under {final} (reading A3).")
-                    res.open_items.append(OpenItem(
-                        e["name"], f"Report all {fmt(e['wages'])} of {e['name']}'s pay under {final} instead of {clerical}.",
-                        f"{len(days)} job-site days is at or above the {threshold}-day threshold (HP-4). House practice "
-                        f"does not say which code replaces {clerical}. {final} is the code of the work at the sites "
-                        f"visited ({site_mix}).", [rec["signins_file"]] + w.get("records", [])))
-                else:
-                    basis += (f" {rec['signins_file']} shows {len(days)} job-site days ({dates}), but no code in the "
-                              f"guide describes the work at those sites, so the person stays {clerical}.")
-                    res.open_items.append(OpenItem(
-                        e["name"], f"Keep {e['name']} under {clerical}.",
-                        f"{len(days)} job-site days meets the {threshold}-day threshold (HP-4), but no code in the guide "
-                        f"describes the work at the sites ({', '.join(sorted({s for v in days.values() for s in v}))}). "
-                        f"House practice does not say what happens then.", [rec["signins_file"]] + w.get("records", [])))
+                pending.append((p, w, days, dates))
         p.lines = [Line(final, e["wages"], basis)]
 
         rides = ride_days.get(e["id"])
@@ -298,74 +292,115 @@ def allocate(guide, hp, rec, ws):
             if not weeks:
                 res.open_items.append(OpenItem(
                     e["name"], f"Leave all of {e['name']}'s pay under {final}.",
-                    f"The route log shows {len(rides)} ride-along days, but there is no weekly pay record, so the "
-                    f"pay cannot be split by whole weeks (HP-2).", [rec["route_log_file"]]))
+                    f"{rec['route_log_file']} shows {len(rides)} ride-along days, but there is no weekly pay record, so "
+                    f"the whole-week test (HP-2) cannot be applied.", [rec["route_log_file"]], "HP-2, HP-10",
+                    f"{e['name']} ({rec['route_log_file']}): please send {e['name']}'s weekly gross pay for the audit "
+                    f"period, Monday to Sunday."))
             else:
                 p.records.append(rec["weekly_payroll_file"])
-                ride_weeks = [(s, t, g) for s, t, g in weeks if any(s <= d <= t for d in rides)]
-                moved = sum((g for _, _, g in ride_weeks), Decimal("0.00"))
-                weekly_total = sum((g for _, _, g in weeks), Decimal("0.00"))
+                per_week = [(s, t, g, sum(1 for d in rides if s <= d <= t)) for s, t, g in weeks]
+                hist = Counter(n for *_, n in per_week)
+                moved_weeks = [w_ for w_ in per_week if w_[3] >= min_ride]
+                moved = sum((g for _, _, g, _ in moved_weeks), ZERO)
+                weekly_total = sum((g for _, _, g in weeks), ZERO)
                 if weekly_total != e["wages"]:
                     res.open_items.append(OpenItem(
                         e["name"], f"Use {reg_file} for the total and {rec['weekly_payroll_file']} for the week split.",
                         f"The weekly pay totals {fmt(weekly_total)} but {reg_file} shows {fmt(e['wages'])}.",
-                        [reg_file, rec["weekly_payroll_file"]]))
-                p.lines = [
-                    Line(route_code, moved, f"{rec['route_log_file']} shows {len(rides)} ride-along days in "
-                                            f"{len(ride_weeks)} pay weeks. Those whole weeks' pay goes to {route_code} "
-                                            f"(HP-2, reading A1)."),
-                    Line(final, e["wages"] - moved, f"{basis} The other {len(weeks) - len(ride_weeks)} pay weeks stay "
-                                                    f"under {final}."),
-                ]
-                ride_people.append((p, rides, ride_weeks, weeks, moved))
-                res.adjustments.append(Adjustment(
-                    e["name"], "Whole-week route split", moved, route_code,
-                    f"{len(rides)} ride-along days ({min(rides).isoformat()} to {max(rides).isoformat()}) fall in "
-                    f"{len(ride_weeks)} of {len(weeks)} pay weeks. Those weeks' gross pay of {fmt(moved)} moves from "
-                    f"{final} to {route_code}.", [rec["route_log_file"], rec["weekly_payroll_file"]], "HP-2"))
+                        [reg_file, rec["weekly_payroll_file"]], "HP-10",
+                        f"{e['name']} ({reg_file}, {rec['weekly_payroll_file']}): the weekly pay totals "
+                        f"{fmt(weekly_total)} but the register shows {fmt(e['wages'])}; please send the reconciliation."))
+                split_text = (f"{len(rides)} ride-along days in the audit period. Pay weeks by ride days: "
+                              + ", ".join(f"{n} day(s) {hist[n]} week(s)" for n in sorted(hist)) + ".")
+                applied("HP-2")
+                if moved:
+                    p.lines = [
+                        Line(route_code, moved, f"{rec['route_log_file']}: {split_text} The {len(moved_weeks)} weeks "
+                                                f"with {min_ride} or more ride days are driver payroll under "
+                                                f"{route_code} (HP-2)."),
+                        Line(final, e["wages"] - moved, f"{basis} The other {len(weeks) - len(moved_weeks)} pay weeks "
+                                                        f"(no ride day or only one) stay under {final} (HP-2)."),
+                    ]
+                    res.adjustments.append(Adjustment(
+                        e["name"], "Whole-week route split", moved, route_code,
+                        f"{split_text} {len(moved_weeks)} pay weeks have {min_ride} or more ride days; their gross pay "
+                        f"of {fmt(moved)} moves from {final} to {route_code}: "
+                        + ", ".join(f"{s.isoformat()} ({n} days, {fmt(g)})" for s, _, g, n in moved_weeks) + ".",
+                        [rec["route_log_file"], rec["weekly_payroll_file"]], "HP-2"))
+                else:
+                    p.lines[0].basis += (f" {rec['route_log_file']}: {split_text} No pay week has {min_ride} or more "
+                                         f"ride days, so all pay stays under {final} (HP-2).")
+                p.evidence = (f"{rec['route_log_file']} records {e['name']} as a ride-along on {len(rides)} day(s): "
+                              + ", ".join(d.isoformat() for d in sorted(rides)) + ".")
 
-        if e["travel_allowance"]:
-            tdays = e["travel_days"] or 0
-            excluded = min(e["travel_allowance"], allowance_cap * tdays)
-            excess = e["travel_allowance"] - excluded
-            p.records.append(f"{reg_file} (travel_days, travel_allowance_paid)")
-            if excess:
-                p.lines.append(Line(final, excess, f"Out-of-town allowance above {fmt(allowance_cap)} per day: "
-                                                   f"{fmt(e['travel_allowance'])} paid for {tdays} travel days, "
-                                                   f"{fmt(excluded)} excluded (HP-6)."))
-                res.adjustments.append(Adjustment(
-                    e["name"], "Travel allowance above the daily exclusion", excess, final,
-                    f"{fmt(e['travel_allowance'])} paid for {tdays} recorded travel days. Up to {fmt(allowance_cap)} "
-                    f"per day ({fmt(excluded)}) is left out; the remaining {fmt(excess)} is payroll.",
-                    [f"{reg_file} (travel_days, travel_allowance_paid)"], "HP-6"))
-            if tdays == 0:
-                res.open_items.append(OpenItem(
-                    e["name"], f"Count all {fmt(e['travel_allowance'])} of the allowance as payroll under {final}.",
-                    f"{reg_file} records a travel allowance but no travel days. House practice excludes up to "
-                    f"{fmt(allowance_cap)} per travel day, so with no recorded days nothing is excluded (reading A6).",
-                    [reg_file]))
+        _travel(res, hp, e, p, reg_file)
         p.records = _uniq(p.records)
         res.people.append(p)
 
-    _subcontractors(res, rec, ws, code_ok, sub_share, in_period)
+    _caterer_test(res, hp, rec, ws, code_ok)
+
+    # Governing code (HP-4): the field code carrying the most payroll, before any clerical move (reading R4).
+    field_pay = defaultdict(Decimal)
+    for p in res.people:
+        for l in p.lines:
+            if l.code != clerical:
+                field_pay[l.code] += l.amount
+    res.governing_code = max(field_pay, key=field_pay.get) if field_pay else None
+    gov_mix = ", ".join(f"{c} {fmt(v)}" for c, v in sorted(field_pay.items(), key=lambda kv: -kv[1])) or "none"
+
+    for p, w, days, dates in pending:
+        applied("HP-4")
+        if res.governing_code:
+            for l in p.lines:
+                if l.code == clerical:
+                    l.code = res.governing_code
+            p.lines[0].basis = (f"{w['basis']} {rec['signins_file']} shows {len(days)} job-site days in the audit "
+                                f"period ({dates}): five or more, so the whole payroll moves to the employer's governing "
+                                f"code {res.governing_code}, the field code carrying the most payroll ({gov_mix}) (HP-4).")
+        else:
+            p.lines[0].basis += (f" {rec['signins_file']} shows {len(days)} job-site days ({dates}), five or more, but "
+                                 f"the employer has no field code, so there is no governing code to move to.")
+            res.open_items.append(OpenItem(
+                p.name, f"Keep {p.name} under {clerical}.",
+                f"{len(days)} job-site days meets the five-day test (HP-4), and the rule moves the whole payroll to the "
+                f"field code carrying the most payroll. This employer has no payroll under any field code, so the rule "
+                f"has nothing to move to, and the guide has no code for the work recorded at "
+                f"{', '.join(sorted({s for v in days.values() for s in v}))}.",
+                [rec["signins_file"]] + w.get("records", []), "HP-4, HP-10",
+                f"{p.name} ({rec['signins_file']}): {p.evidence} Please describe what {p.name} did at each visit, and "
+                f"whether any of it was physical work outside the office."))
+
+    for p in owners:
+        if res.governing_code and p.lines[0].code != res.governing_code:
+            res.open_items.append(OpenItem(
+                p.name, f"Keep the owner's flat amount under {p.lines[0].code}.",
+                f"House practice counts a working owner under the employer's trade code. The worksheet names "
+                f"{p.lines[0].code}, but the field code carrying the most payroll is {res.governing_code}.",
+                p.records, "HP-3, R3",
+                f"{p.name} ({', '.join(p.records)}): please describe the field work {p.name} did during the audit period."))
+
+    _subcontractors(res, hp, rec, ws, code_ok, in_period)
+
+    if pending and res.governing_code and res.sub_lines:
+        with_subs = defaultdict(Decimal, field_pay)
+        for l in res.sub_lines:
+            with_subs[l.code] += l.amount
+        alt = max(with_subs, key=with_subs.get)
+        if alt != res.governing_code:
+            res.open_items.append(OpenItem(
+                "Governing code", f"Use {res.governing_code}, from employees' payroll only.",
+                f"Counting subcontractor additions would make {alt} the governing code. House practice does not say "
+                f"which payroll decides it (reading R4).", [rec["sub_payments_file"]], "HP-4, R4"))
 
     if split_people:
-        rows = "; ".join(f"{p.name}: " + ", ".join(f"{c} {h:g} h" for c, h in sorted(bc.items(), key=lambda kv: -kv[1]))
-                         + f" -> {f}" for p, bc, f in split_people)
+        rows = "; ".join(f"{p.name}: " + ", ".join(f"{c} {n} days" for c, n in sorted(bc.items(), key=lambda kv: -kv[1]))
+                         + f", reported under {f}" for p, bc, f in split_people)
         res.open_items.append(OpenItem(
             "Crew members with more than one type of work",
-            "Report each person's whole pay under the code with the most recorded hours.",
-            f"CG-07 allows a division when time records are kept, but house practice is that one person's pay is not "
-            f"split, except for route ride-alongs (HP-2). House practice does not say which single code to use. "
-            f"Hours by code: {rows}.", [rec["timesheets_file"]]))
-    if ride_people:
-        res.open_items.append(OpenItem(
-            "Reading of 'split the pay by whole weeks'",
-            "Any pay week with at least one ride-along day goes wholly to the route code (reading A1).",
-            "A narrower reading, counting only weeks spent wholly on the road, would move less payroll. "
-            + "; ".join(f"{p.name}: {len(r)} ride days in {len(rw)} of {len(wk)} weeks, {fmt(m)} moved"
-                        for p, r, rw, wk, m in ride_people) + ".",
-            [rec["route_log_file"], rec["weekly_payroll_file"]]))
+            "Report each person's whole pay under the code with the most recorded days.",
+            f"Confirmed: one person's pay is not split except for route ride-alongs (HP-2), and tests use days, not "
+            f"hours (HP-13). Not stated: the crew-timesheet test that picks the single code. The most-days choice is "
+            f"this Skill's reading (R2). Days by code: {rows}.", [rec["timesheets_file"]], "HP-10, R2"))
 
     for item in ws.get("open_items", []):
         target = next((o for o in res.open_items if o.about == item.get("merge_with")), None)
@@ -373,14 +408,16 @@ def allocate(guide, hp, rec, ws):
             target.proposal = item.get("proposal", target.proposal)
             target.why += " " + item["why"]
             target.records = _uniq(target.records + item.get("records", []))
+            target.question = item.get("employer_question", target.question)
         else:
             res.open_items.append(OpenItem(item["about"], item["proposal"], item["why"], item.get("records", []),
-                                           item.get("rule", "HP-10")))
+                                           item.get("rule", "HP-10"), item.get("employer_question", "")))
 
     totals = defaultdict(Decimal)
     for line in [l for p in res.people for l in p.lines] + res.sub_lines:
         totals[line.code] += line.amount
     res.totals = {c: v.quantize(CENT) for c, v in sorted(totals.items()) if v}
+    _reconcile(res, rec)
 
     mapping, res.inference = infer_employer_codes(rec["register"], rec["employer_split"])
     for p in res.people:
@@ -388,19 +425,105 @@ def allocate(guide, hp, rec, ws):
         if p.employer_code and p.primary_code != p.employer_code and not any(a.about == p.name for a in res.adjustments):
             res.adjustments.append(Adjustment(
                 p.name, "Reclassified", p.wages, p.primary_code,
-                f"The employer reported {p.name} ({p.position}) under {p.employer_code}. The records put the "
-                f"{fmt(p.wages)} under {p.primary_code}: {p.lines[0].basis}", p.records, "HP-1, HP-7"))
+                f"The records put {p.name}'s {fmt(p.wages)} under {p.primary_code}: {p.lines[0].basis} (Employer's "
+                f"split pairs {p.name} with {p.employer_code}.)", p.records, "HP-1, HP-7"))
         for a in res.adjustments:
             if a.about == p.name and a.kind != "Reclassified" and p.employer_code and p.employer_code != a.code:
-                a.detail += f" The employer reported {p.name} under {p.employer_code}."
+                a.detail += f" (Employer's split pairs {p.name} with {p.employer_code}.)"
 
     _questions(res, rec, ws)
     return res
 
 
-def _subcontractors(res, rec, ws, code_ok, share, in_period):
+def _travel(res, hp, e, p, reg_file):
+    if not e["travel_allowance"]:
+        return
+    cap = money(hp["out_of_town_daily_allowance_exclusion"])
+    code = p.lines[-1].code
+    tdays = e["travel_days"] or 0
+    excluded = min(e["travel_allowance"], cap * tdays)
+    excess = e["travel_allowance"] - excluded
+    src = f"{reg_file} (travel_days, travel_allowance_paid)"
+    p.records.append(src)
+    if "HP-6" not in res.applied:
+        res.applied.append("HP-6")
+    if excess:
+        p.lines.append(Line(code, excess, f"Daily allowance above {fmt(cap)} per day: {fmt(e['travel_allowance'])} paid "
+                                          f"for {tdays} travel days, {fmt(excluded)} left out (HP-6)."))
+        res.adjustments.append(Adjustment(
+            e["name"], "Travel allowance above the daily exclusion", excess, code,
+            f"{fmt(e['travel_allowance'])} paid for {tdays} recorded travel days. Up to {fmt(cap)} per day "
+            f"({fmt(excluded)}) is left out; the remaining {fmt(excess)} is payroll under {code}.", [src],
+            "HP-6" if tdays else "HP-6, R6"))
+    if tdays == 0:
+        res.open_items.append(OpenItem(
+            e["name"], f"Count all {fmt(e['travel_allowance'])} of the allowance as payroll under {code}.",
+            f"{reg_file} records an allowance but no travel days. Nadia has no practice for this and asked for it to be "
+            f"allocated under practice and the guide as they stand. HP-6 leaves out up to {fmt(cap)} per travel day, so "
+            f"with no recorded day nothing qualifies, and the amount is payroll (reading R6).", [reg_file], "HP-6, R6"))
+
+
+def _caterer_test(res, hp, rec, ws, code_ok):
+    """HP-14: the caterer code applies only if off-site catering is 40% or more of the employer's gross receipts."""
+    caterer, restaurant = hp["caterer_code"], hp["restaurant_code"]
+    crew = [p for p in res.people if any(l.code == caterer for l in p.lines)]
+    if not crew:
+        return
+    cfg = ws.get("receipts") or {}
+    name = cfg.get("file") or rec.get("receipts_file")
+    names = ", ".join(p.name for p in crew)
+    if not name or not cfg.get("offsite_columns") or not cfg.get("other_columns"):
+        res.open_items.append(OpenItem(
+            f"Caterer receipts test ({names})", f"Keep {names} under {caterer} until the receipts test can be run.",
+            f"{caterer} applies only if off-site catering is {Decimal(hp['caterer_min_offsite_receipts_share']):.0%} or "
+            f"more of gross receipts (HP-14), and the file has no receipts record mapped in the worksheet.", [],
+            "HP-14, HP-10", f"{names}: please send monthly gross receipts for the audit period, split between off-site "
+                            f"catering and everything else."))
+        return
+    rows = rec["file"].rows(name, ["month"] + cfg["offsite_columns"] + cfg["other_columns"])
+    start, end = rec["period"]
+    used, partial = [], []
+    for r in rows:
+        first = datetime.date.fromisoformat(r["month"] + "-01")
+        last = (first.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
+        if first <= end and last >= start:
+            used.append(r)
+            if first < start or last > end:
+                partial.append(r["month"])
+    offsite = sum((money(r[c]) for r in used for c in cfg["offsite_columns"]), ZERO)
+    total = offsite + sum((money(r[c]) for r in used for c in cfg["other_columns"]), ZERO)
+    share = offsite / total if total else Decimal(0)
+    need = Decimal(hp["caterer_min_offsite_receipts_share"])
+    months = f"{used[0]['month']} to {used[-1]['month']}" if used else "none"
+    text = (f"{name}, {months}: off-site catering {fmt(offsite)} of {fmt(total)} gross receipts = {share:.2%} "
+            f"(test: {need:.0%} or more for {caterer}, HP-14).")
+    if partial:
+        res.notes.append(f"{name}: months {', '.join(partial)} only partly overlap the audit period "
+                         f"{start.isoformat()} to {end.isoformat()} and were counted whole (reading R14).")
+    res.applied.append("HP-14")
+    res.notes.append(f"Caterer receipts test: {text}")
+    for p in crew:
+        p.records = _uniq(p.records + [name])
+        if share < need:
+            moved = sum((l.amount for l in p.lines if l.code == caterer), ZERO)
+            for l in p.lines:
+                if l.code == caterer:
+                    l.code = restaurant
+            p.lines[0].basis += f" {text} Below the test, so the catering crew stays under {restaurant}."
+            res.adjustments.append(Adjustment(
+                p.name, "Caterer receipts test", moved, restaurant,
+                f"{p.name} works on the catering crew. {text} Below {need:.0%}, so {fmt(moved)} goes under {restaurant}, "
+                f"not {caterer}.", [name] + [r for r in p.records if r != name], "HP-14"))
+        else:
+            p.lines[0].basis += f" {text} At or above the test, so {caterer} applies."
+    code_ok(restaurant, "house_practice.restaurant_code")
+
+
+def _subcontractors(res, hp, rec, ws, code_ok, in_period):
     if not rec["sub_payments"]:
         return
+    share = Decimal(hp["uninsured_subcontractor_payroll_share"])
+    start, end = rec["period"]
     certs = defaultdict(list)
     for c in rec["certificates"]:
         certs[c["subcontractor"]].append((c["certificate_no"], day(c["coverage_from"]), day(c["coverage_to"])))
@@ -415,57 +538,72 @@ def _subcontractors(res, rec, ws, code_ok, share, in_period):
             res.notes.append(f"{pay['subcontractor']} invoice {pay.get('invoice', '?')} ({pay['date']}, "
                              f"{fmt(money(pay['amount_paid']))}) in {rec['sub_payments_file']} falls outside the audit "
                              f"period and was not used.")
-
+    res.applied.append("HP-5")
+    period = f"{start.isoformat()} to {end.isoformat()}"
     for sub, pays in by_sub.items():
         cert_name = sub if sub in certs else matches.get(sub)
+        held = certs.get(cert_name, [])
+        whole = [c for c in held if c[1] <= start and c[2] >= end]
         if cert_name and cert_name != sub:
+            effect = ("This decides whether the payments are insured." if whole else
+                      "It does not change the allocation: that certificate does not cover the whole audit period, so "
+                      "the payments are added either way.")
             res.open_items.append(OpenItem(
                 sub, f"Treat the certificate issued to '{cert_name}' as {sub}'s.",
-                f"{rec['sub_payments_file']} pays '{sub}', but the certificate in {rec['certificates_file']} is issued "
-                f"to '{cert_name}'. The names are close but not the same.", files))
-        insured, uninsured = [], []
+                f"{rec['sub_payments_file']} pays '{sub}', but the certificate in {rec['certificates_file']} is issued to "
+                f"'{cert_name}'. Nadia has no practice for a name that differs. {effect}", files, "HP-10",
+                f"{sub} ({', '.join(files)}): please confirm whether '{sub}' and '{cert_name}' are the same business, "
+                f"with its legal name and federal tax ID."))
+        listing = ", ".join(f"{p.get('invoice', '?')} ({p['date']}, {fmt(money(p['amount_paid']))})" for p in pays)
+        lead = f"{sub} ({', '.join(files)})"
+        if whole:
+            res.notes.append(f"{sub}: certificate {whole[0][0]} covers the whole audit period ({period}); "
+                             f"{len(pays)} payment(s) not added to payroll (HP-5).")
+            res.questions.append((sub, f"{lead}: please confirm that certificate {whole[0][0]} covered {sub}'s own "
+                                       f"workers for the whole audit period {period}, including invoices {listing}."))
+            continue
+        why = ("no certificate of insurance for this subcontractor is in the file" if not held else
+               "the certificate in the file (" + "; ".join(f"{n}, {f.isoformat()} to {t.isoformat()}" for n, f, t in held)
+               + f") does not cover the whole audit period {period}")
         for pay in pays:
-            d = day(pay["date"])
-            cover = [c for c in certs.get(cert_name, []) if c[1] <= d <= c[2]]
-            (insured if cover else uninsured).append((pay, cover))
-        for pay, _ in uninsured:
             work = pay["work"]
             if work not in work_codes:
                 raise WorksheetError(f"subcontracted work {work!r} has no entry in worksheet subcontract_work_codes")
             code = code_ok(work_codes[work], f"subcontract_work_codes.{work}")
             paid = money(pay["amount_paid"])
             added = (paid * share).quantize(CENT, rounding=ROUND_HALF_UP)
-            held = certs.get(cert_name, [])
-            why = ("no certificate of insurance for this subcontractor is in the file" if not held else
-                   "the certificate in the file (" + "; ".join(f"{n}, {f.isoformat()} to {t.isoformat()}" for n, f, t in held)
-                   + f") does not cover the payment date {pay['date']}")
             res.sub_lines.append(Line(code, added, f"{share:.0%} of {fmt(paid)} paid to uninsured subcontractor {sub} "
                                                    f"(invoice {pay.get('invoice', '?')}, {pay['date']}, {work}) (HP-5, CG-06)."))
             res.adjustments.append(Adjustment(
                 f"{sub}, invoice {pay.get('invoice', '?')}", "Uninsured subcontractor payment added", added, code,
                 f"{fmt(paid)} paid on {pay['date']} for {work}. Because {why}, {share:.0%} ({fmt(added)}) is added to "
                 f"payroll under {code}, the code for the work.", files, "HP-5, CG-06"))
-        res.notes.append(f"{sub}: {len(insured)} payment(s) covered by a certificate in the file, "
-                         f"{len(uninsured)} not covered.")
-        res.questions.append((sub, _sub_question(sub, cert_name, insured, uninsured, rec)))
+        res.notes.append(f"{sub}: {why}; all {len(pays)} payment(s) added at {share:.0%} (HP-5).")
+        res.questions.append((sub, f"{lead}: {why}. Please send a workers' compensation certificate covering {sub}'s "
+                                   f"own workers for the whole audit period {period}. Without one, {share:.0%} of "
+                                   f"invoices {listing} stays in payroll."))
 
 
-def _sub_question(sub, cert_name, insured, uninsured, rec):
-    parts = []
-    if insured:
-        nos = sorted({c[0] for _, cov in insured for c in cov})
-        parts.append(f"confirm that certificate {', '.join(nos)} covered {sub}'s own workers on the dates of invoices "
-                     + ", ".join(f"{p.get('invoice', '?')} ({p['date']}, {fmt(money(p['amount_paid']))})" for p, _ in insured))
-    if uninsured:
-        parts.append("send a workers' compensation certificate covering the dates of invoices "
-                     + ", ".join(f"{p.get('invoice', '?')} ({p['date']}, {fmt(money(p['amount_paid']))})" for p, _ in uninsured)
-                     + "; without one, 60% of each payment stays in payroll")
-    lead = f"{sub} ({rec['sub_payments_file']}" + (f", {rec['certificates_file']}" if rec["certificates_file"] else "") + ")"
-    return f"{lead}: please " + ", and ".join(parts) + "."
+def _reconcile(res, rec):
+    """Register wages plus every adjustment that adds or removes payroll must equal the allocated total."""
+    register = sum((e["wages"] for e in rec["register"]), ZERO)
+    steps = [("Payroll register wages", register)]
+    for a in res.adjustments:
+        if a.kind == "Owner counted at flat amount":
+            p = next(p for p in res.people if p.name == a.about)
+            steps.append((f"{a.about}: flat {fmt(a.amount)} replaces register wages {fmt(p.wages)}", a.amount - p.wages))
+        elif a.kind in ("Travel allowance above the daily exclusion", "Uninsured subcontractor payment added"):
+            steps.append((f"{a.about}: {a.kind.lower()}", a.amount))
+    total = sum((v for _, v in steps), ZERO)
+    allocated = sum(res.totals.values(), ZERO)
+    if total != allocated:
+        raise AssertionError(f"reconciliation failed: register plus adjustments {total} != allocated {allocated}")
+    res.reconciliation = steps + [("First-pass total (equals the sum of the codes CSV)", allocated)]
 
 
 def _questions(res, rec, ws):
-    """Every adjustment, and every record a decision rests on, gets at least one employer question (HP-9)."""
+    """Every adjustment, every record a decision rests on, every questionable record and every open item gets at least
+    one employer question (HP-9, HP-10, HP-15)."""
     reg = rec["register_file"]
     adjusted = {a.about for a in res.adjustments}
     sub_qs = list(res.questions)
@@ -477,27 +615,32 @@ def _questions(res, rec, ws):
             continue
         p = next((p for p in res.people if p.name == a.about), None)
         if a.kind == "Owner counted at flat amount":
-            q(a.about, f"{a.about} ({', '.join(p.records)}): please confirm that {a.about} is an included owner "
-                       f"(no election of exclusion on file) who did field work during the audit period, and the "
-                       f"{fmt(p.wages)} of wages shown in {reg}.")
+            q(a.about, f"{a.about} ({', '.join(p.records)}): please confirm that {a.about} has not filed an election "
+                       f"of exclusion, did field work during the audit period, and was paid the {fmt(p.wages)} shown in "
+                       f"{reg}.")
         elif a.kind == "Whole-week route split":
-            q(a.about, f"{a.about} ({rec['route_log_file']}, {rec['weekly_payroll_file']}): please confirm that "
-                       f"{a.about} rode along on the route days the route log records, and the weekly gross pay "
-                       f"in those weeks (total {fmt(a.amount)}).")
+            q(a.about, f"{a.about} ({rec['route_log_file']}, {rec['weekly_payroll_file']}): {p.evidence} Please confirm "
+                       f"these ride-along days and the weekly gross pay in the weeks with two or more of them "
+                       f"(total {fmt(a.amount)}).")
         elif a.kind == "Travel allowance above the daily exclusion":
             row = next(e for e in rec["register"] if e["name"] == a.about)
             if row["travel_days"]:
                 q(a.about, f"{a.about} ({reg}, travel columns): please confirm the {row['travel_days']} out-of-town "
-                           f"travel days and the {fmt(row['travel_allowance'])} allowance paid, with the trip dates and job.")
+                           f"travel days and the {fmt(row['travel_allowance'])} daily allowance paid, with the trip dates "
+                           f"and job.")
             else:
                 q(a.about, f"{a.about} ({reg}, travel columns): the register shows a {fmt(row['travel_allowance'])} "
                            f"travel allowance but no travel days. Please say what the payment was for and, if it was "
                            f"for out-of-town work, send the dates and job.")
+        elif a.kind == "Caterer receipts test":
+            q(a.about, f"{a.about} ({', '.join(a.records)}): please confirm the monthly split of gross receipts between "
+                       f"off-site catering and the restaurant for the audit period, and that {a.about} worked on the "
+                       f"catering crew.")
         elif a.kind == "Reclassified":
             recs = ", ".join(r for r in p.records if r != reg)
-            q(a.about, f"{a.about} ({recs or reg}): the application reports {a.about} ({p.position}) under "
-                       f"{p.employer_code}. {p.evidence or 'The records describe other work.'} Please confirm "
-                       f"{a.about}'s actual duties during the audit period and that these records are complete.")
+            q(a.about, f"{a.about} ({recs or reg}): {p.evidence or 'The records in the file describe other work.'} "
+                       f"Please confirm {a.about}'s actual duties during the audit period and that these records are "
+                       f"complete.")
 
     for p in res.people:
         if p.name in adjusted:
@@ -510,6 +653,10 @@ def _questions(res, rec, ws):
             q(p.name, f"{p.name} ({reg}, travel columns): please confirm the {travel['travel_days']} travel days and the "
                       f"{fmt(travel['travel_allowance'])} allowance paid.")
 
+    for about, record, detail in res.questionable:
+        q(about, f"{about} ({record}): {detail}. The first pass uses the record as written. Please confirm it or send "
+                 f"the corrected record.")
+
     if res.people:
         listing = "; ".join(f"{p.name}, {p.position}, {fmt(p.wages)} (first pass: "
                             + ", ".join(f"{fmt(l.amount)} {l.code}" for l in p.lines) + ")" for p in res.people)
@@ -520,6 +667,6 @@ def _questions(res, rec, ws):
     res.questions += sub_qs
     for c in ws.get("confirmations", []):
         q(c["about"], c["question"])
-    for item in ws.get("open_items", []):
-        if item.get("employer_question"):
-            q(item["about"], item["employer_question"])
+    for o in res.open_items:
+        q(o.about, o.question or f"{o.about} ({', '.join(o.records) or 'records in the file'}): the first pass "
+                                 f"proposes: {o.proposal} Please confirm, or send the record that shows otherwise.")

@@ -1,12 +1,12 @@
 {
-  "fetched_at": "2026-10-27T01:36:34+00:00",
+  "fetched_at": "2026-10-27T02:22:51+00:00",
   "guide_sha256": "89480f691737a0e8a762a836b8412476e0ed9d0b37639eb898e2826771c1dba8",
   "guide_source": "https://drive.google.com/file/d/1L5MxLny7erhjSwCvl43DTSmAt3wgv22j/view",
   "employer_source": "https://drive.google.com/drive/folders/1pt8gzX8HDuaAq6g8ZFeQ66zbVIYdlN_n",
   "employers": {
     "annapolis-courier": {
-      "C-110": "100551.15",
-      "T-610": "183964.25"
+      "C-110": "107820.45",
+      "T-610": "176694.95"
     },
     "bay-crest-exteriors": {
       "C-110": "44812.35",
@@ -17,8 +17,7 @@
       "C-110": "425148.16"
     },
     "larkspur-lane-bistro": {
-      "F-710": "226431.55",
-      "F-720": "114293.80"
+      "F-710": "340725.35"
     },
     "patuxent-electric": {
       "C-110": "43905.60",
@@ -27,7 +26,7 @@
     "severn-homebuilders": {
       "C-110": "117368.70",
       "H-420": "369204.39",
-      "R-310": "18987.39"
+      "R-310": "27567.39"
     }
   },
   "report": "deliverables/audit-report.md",

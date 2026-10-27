@@ -122,6 +122,7 @@ def load(folder):
         "sub_payments": (("subcontractor-payments*.csv", "*subcontract*.csv"), ["date", "subcontractor", "work", "amount_paid"]),
         "certificates": (("insurance-certificates*.csv", "*certificate*.csv"), ["subcontractor", "certificate_no", "coverage_from", "coverage_to"]),
     }
+    rec["receipts_file"] = ef.find("*receipts*.csv")
     for key, (patterns, cols) in optional.items():
         name = ef.find(*patterns)
         rec[key + "_file"] = name

@@ -20,9 +20,6 @@
   "owners": {
     "Catherine Harbor": {"included": false, "basis": "Founding partner; has filed an election of exclusion and is not on the payroll register (business-description.md)."}
   },
-  "site_codes": {
-    "Sallowmere Court Condominiums": null
-  },
   "facts": [
     {"fact": "Five-employee law office in Annapolis; no other locations, no subcontractors", "record": "business-description.md"},
     {"fact": "The founding partner, Catherine Harbor, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
@@ -35,8 +32,8 @@
   ],
   "open_items": [
     {"about": "Tomas Reyes: what the Sallowmere Court Condominiums visits were", "merge_with": "Tomas Reyes",
-      "proposal": "Keep Tomas Reyes under C-110. The visits look like client or closing work, not field work.",
-      "why": "The field notes say no one does physical work outside the office and that closings are not job sites, so the sign-ins may not be 'job site' days in the sense of HP-4. Why a law office has a site sign-in log at all is not explained.",
+      "proposal": "Keep all 64,212.48 of Tomas Reyes's pay under C-110.",
+      "why": "Days are counted from the site sign-in log (HP-4), so the six days count. But every code in the guide that describes field work is for a trade this firm does not carry, and the field notes say no one on staff does physical work outside the office. Why a law office keeps a site sign-in log is not explained in the file.",
       "records": ["site-signin-log.csv", "field-notes.md"],
       "employer_question": "Tomas Reyes (site-signin-log.csv): please describe what Tomas Reyes did at Sallowmere Court Condominiums on 2025-09-16, 2025-10-22, 2025-12-09, 2026-01-28, 2026-03-04 and 2026-04-15 (for example a closing, document delivery or an inspection), and say who keeps this sign-in log."}
   ],

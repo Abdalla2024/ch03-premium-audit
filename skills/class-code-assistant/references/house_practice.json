@@ -1,8 +1,12 @@
 {
-  "_source": "interviews/ch03-premium-audit-20261027-0049.md (Nadia Brennan, interview 1). See house-practice.md for the wording and timestamps.",
+  "_source": "Nadia Brennan, interviews 1 and 2 (interviews/*.md). See house-practice.md for the wording and timestamps.",
   "clerical_code": "C-110",
   "owner_field_work_flat_payroll": "63700.00",
   "clerical_job_site_day_threshold": 5,
+  "route_split_min_ride_days_per_week": 2,
   "uninsured_subcontractor_payroll_share": "0.60",
-  "out_of_town_daily_allowance_exclusion": "47.00"
+  "out_of_town_daily_allowance_exclusion": "47.00",
+  "caterer_code": "F-720",
+  "restaurant_code": "F-710",
+  "caterer_min_offsite_receipts_share": "0.40"
 }

@@ -19,8 +19,9 @@ def write_codes_csv(path, result, guide):
 
 
 def change(result):
-    """Sum of absolute per-code differences from the employer's own split, in payroll dollars (no rates involved)."""
-    return sum((abs(d) for d in result.differences().values()), ZERO)
+    """Payroll the first pass places in a code above what the employer reported there: moved in from another code or
+    added (sum of positive per-code differences). Payroll dollars only; no rates involved."""
+    return sum((d for d in result.differences().values() if d > 0), ZERO)
 
 
 def call_order(results):
@@ -50,31 +51,37 @@ def report(results, guide, run):
         f"- Classification rules: Linden Shore Mutual classification guide excerpt, edition of {guide.edition}, "
         f"sha256 `{run['guide_sha256'][:12]}`, read from {run['guide_source']}.",
         f"- Employer files read from {run['employer_source']} at {run['fetched_at']}.",
-        "- House practice: the audit team's unwritten rules from interview 1, labelled HP-1 to HP-12 in "
-        "`skills/class-code-assistant/references/house-practice.md`. Readings A1 to A6 in the same file are this "
-        "Skill's interpretations; every place one changes an allocation is listed as an open item.",
-        "- **Facts** below are cited to the employer record they come from. **Open items** are proposals for gray "
-        "areas: each says how the first pass treated the case and why, and needs Nadia's confirmation.",
+        "- Three kinds of statement are kept apart:",
+        "  - **Confirmed rules** (`HP-n`) are what Nadia Brennan stated in interviews 1 and 2, listed with timestamps "
+        "in `skills/class-code-assistant/references/house-practice.md`, together with the guide (`CG-nn`).",
+        "  - **Facts** cite the employer record they come from.",
+        "  - **Open items** are unresolved judgements. Each one gives the proposed handling, why, and the Skill's "
+        "reading (`R-n`) where one was needed. Each is on the employer's question list for confirmation, and Nadia "
+        "reviews the proposal (HP-10).",
+        "- **Questionable records** are used as written and sent to the employer to confirm (HP-15).",
         "",
         "## Which two employers to call first",
         "",
-        "The order ranks employers by how far the first pass is from the employer's own split. The measure is the sum "
-        "of the absolute per-code differences, in dollars of payroll (not premium); payroll moved from one code to "
-        "another counts once out and once in. Ties go to the employer with more open items. This ranking rule is the "
-        "Skill's own proposal: the auditor has not said how she wants calls prioritised (open item).",
+        "Nadia left the choice to the analyst, with reasons (HP-12). The order ranks employers by the payroll the "
+        "first pass places in a code above what the employer reported there: payroll moved in from another code, plus "
+        "payroll added. It is in dollars of payroll, not premium. A larger figure means the employer's own split, and "
+        "so the figures underwriting would otherwise quote from, is further from the records. Ties go to the employer "
+        "with more open items.",
         "",
-        "| Order | Employer | Sum of per-code differences | Employer reported | First pass | Open items | Employer questions |",
-        "|---|---|---|---|---|---|---|",
+        "| Order | Employer | Payroll placed differently | Net change | Employer reported | First pass | Open items | Employer questions |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     ordered = call_order(results)
     for i, r in enumerate(ordered, 1):
-        out.append(f"| {i} | {r.rec['employer_name']} | {fmt(change(r))} | {fmt(sum(r.employer_split.values(), ZERO))} "
-                   f"| {fmt(sum(r.totals.values(), ZERO))} | {len(r.open_items)} | {len(r.questions)} |")
+        out.append(f"| {i} | {r.rec['employer_name']} | {fmt(change(r))} | "
+                   f"{_signed(sum(r.differences().values(), ZERO)) if any(r.differences().values()) else '0.00'} | "
+                   f"{fmt(sum(r.employer_split.values(), ZERO))} | {fmt(sum(r.totals.values(), ZERO))} | "
+                   f"{len(r.open_items)} | {len(r.questions)} |")
     out.append("")
     for i, r in enumerate(ordered[:2], 1):
-        out.append(f"{i}. **{r.rec['employer_name']}**: per-code differences total {fmt(change(r))} (net "
-                   f"{_signed(sum(r.differences().values(), ZERO))}). The largest drivers are "
-                   f"{_drivers(r)}. {len(r.open_items)} open item(s) depend on the employer's confirmation.")
+        out.append(f"{i}. **{r.rec['employer_name']}**: {fmt(change(r))} of payroll is placed differently from the "
+                   f"employer's split. The largest drivers are {_drivers(r)}. Open items for the employer: "
+                   + ("; ".join(o.about for o in r.open_items) or "none") + ".")
     out += ["", "## Summary", "", "| Employer | Employer's split | Decision rests on |", "|---|---|---|"]
     for r in results:
         out.append(f"| {r.rec['employer_name']} | {'Accepted' if r.accepts_employer_split else 'Not accepted'} | "
@@ -119,6 +126,11 @@ def _employer_section(r, guide):
                    f"{fmt(r.totals.get(code, ZERO))} | {_signed(d) if d else '0.00'} |")
     tot_e, tot_f = sum(r.employer_split.values(), ZERO), sum(r.totals.values(), ZERO)
     out += [f"| **Total** | | **{fmt(tot_e)}** | **{fmt(tot_f)}** | **{_signed(tot_f - tot_e) if tot_f != tot_e else '0.00'}** |", ""]
+    out += [f"Confirmed rules that decided or changed something here: {', '.join(sorted(r.applied, key=lambda x: int(x[3:]))) or 'HP-1, HP-7 only'}. "
+            f"Governing code (field code carrying the most payroll, HP-4): {r.governing_code or 'none, no field code'}.", ""]
+    out += ["Reconciliation:", "", "| Step | Amount (USD) |", "|---|---|"]
+    out += [f"| {_cell(label)} | {_signed(v) if i and i < len(r.reconciliation) - 1 else fmt(v)} |"
+            for i, (label, v) in enumerate(r.reconciliation)] + [""]
 
     out += ["### Where and why the first pass differs from the employer's split", ""]
     if not r.adjustments:
@@ -142,7 +154,7 @@ def _employer_section(r, guide):
         out.append("")
 
     out += ["### Employee by employee", "",
-            "| ID | Name | Position | Register wages | Employer's code | First pass | Basis | Records |",
+            "| ID | Name | Position | Register wages | Employer's code (paired from application totals) | First pass | Basis | Records |",
             "|---|---|---|---|---|---|---|---|"]
     for p in r.people:
         alloc = "<br>".join(f"{fmt(l.amount)} {l.code}" for l in p.lines)
@@ -157,11 +169,19 @@ def _employer_section(r, guide):
         out += ["### Documented facts relied on", ""]
         out += [f"- {f['fact']} ({f['record']})" for f in ws["facts"]] + [""]
 
-    out += ["### Open items for Nadia Brennan to confirm", ""]
+    if r.questionable:
+        out += ["### Questionable records (used as written, HP-15)", ""]
+        out += [f"- {detail}. Used as written; on the question list for the employer to confirm." for _, _, detail in r.questionable]
+        out.append("")
+
+    out += ["### Open items: unresolved judgements", "",
+            "Status of each: open. The proposed handling is applied in the figures above, the employer is asked to "
+            "confirm it (see the question list), and Nadia Brennan reviews the proposal (HP-10, HP-11).", ""]
     if r.open_items:
-        out += ["| # | About | Proposed handling | Why | Records |", "|---|---|---|---|---|"]
+        out += ["| # | About | Proposed handling | Why | Records | Rule / reading |", "|---|---|---|---|---|---|"]
         for i, o in enumerate(r.open_items, 1):
-            out.append(f"| {i} | {_cell(o.about)} | {_cell(o.proposal)} | {_cell(o.why)} | {_cell(', '.join(o.records))} |")
+            out.append(f"| {i} | {_cell(o.about)} | {_cell(o.proposal)} | {_cell(o.why)} | {_cell(', '.join(o.records))} "
+                       f"| {o.rule} |")
     else:
         out.append("None.")
     out.append("")
@@ -178,9 +198,9 @@ def _employer_section(r, guide):
 def questions(results):
     out = ["# Audit questions for employers", "",
            "One section per employer. Each question names the employee, subcontractor or record it is about, and the "
-           "document that would confirm it. Every adjustment in the audit report, and every record a decision rests "
-           "on, has at least one question (house practice HP-9). These are drafts for Nadia Brennan to review before "
-           "they go to the employer.", ""]
+           "document that would confirm it. Every adjustment in the audit report, every record a decision rests on, "
+           "every questionable record and every open item has at least one question (house practice HP-9, HP-10, "
+           "HP-15). These are drafts for Nadia Brennan to review before they go to the employer.", ""]
     for r in results:
         out += [f"## {r.rec['employer_name']}", ""]
         for i, (about, text) in enumerate(r.questions, 1):

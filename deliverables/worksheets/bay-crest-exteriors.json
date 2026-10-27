@@ -32,11 +32,6 @@
     "siding": "R-320",
     "gutters": "R-320"
   },
-  "site_codes": {
-    "Arnold re-roof": "R-310",
-    "Severna Park re-roof": "R-310",
-    "Stevensville siding": "R-320"
-  },
   "facts": [
     {"fact": "Bay Crest replaces roofs and installs siding and gutters; ten employees; no subcontractors in the period", "record": "business-description.md"},
     {"fact": "The owner, Philip Crestwood, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
@@ -46,19 +41,9 @@
   ],
   "confirmations": [
     {"about": "Philip Crestwood", "question": "Philip Crestwood (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05."},
-    {"about": "Subcontractors", "question": "Business description, APP-BCE-0217: please confirm in writing that Bay Crest Exteriors paid no subcontractors between 2025-07-07 and 2026-07-05, and send the general ledger subcontract account for the period."}
+    {"about": "Subcontractors", "question": "Business description, APP-BCE-0217: please confirm in writing that Bay Crest Exteriors paid no subcontractors between 2025-07-07 and 2026-07-05, and send the general ledger subcontract account for the period."},
+    {"about": "Application APP-BCE-0217", "question": "Application APP-BCE-0217: the application reports seven employees under C-110 and says most people coordinate jobs, but crew-timesheets.csv records BC-E01 to BC-E08 on roofing, siding and gutter jobs throughout the audit period. Please name the seven people the application counted as office staff and confirm the crew timesheets, since they decide the allocation."}
   ],
-  "open_items": [
-    {"about": "Employer's split leans to the clerical code",
-      "proposal": "Allocate from crew-timesheets.csv and site-signin-log.csv, not from the application.",
-      "why": "The application puts 7 of 10 employees under C-110 and says most people coordinate jobs. The timesheets record eight crew members working roofing, siding and gutters every working day, and the field notes saw eight people out on two jobs. The records decide (HP-7).",
-      "records": ["application.md", "crew-timesheets.csv", "field-notes.md"],
-      "employer_question": "Application APP-BCE-0217: please explain why seven employees were reported under C-110 when crew-timesheets.csv records BC-E01 to BC-E08 on roofing, siding and gutter jobs for the whole audit period, and name the seven people the application counted as office staff."},
-    {"about": "Teresa Lindqvist: site work types read from site names",
-      "proposal": "Treat 're-roof' sites as R-310 work and 'siding' sites as R-320 work.",
-      "why": "site-signin-log.csv gives only site names. The work done at each site is read from the name; no record links the sign-in sites to timesheet job IDs. Her code depends on this: 5 re-roof days against 4 siding days, and one of the re-roof days is 2025-12-25.",
-      "records": ["site-signin-log.csv"],
-      "employer_question": "Teresa Lindqvist (site-signin-log.csv): please confirm what work Bay Crest was doing at Arnold re-roof, Severna Park re-roof and Stevensville siding on each date she signed in, and what she did there (measuring, inspecting, or working with the crew)."}
-  ],
+  "open_items": [],
   "unused_records": {}
 }

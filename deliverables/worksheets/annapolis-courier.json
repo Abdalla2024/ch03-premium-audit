@@ -33,14 +33,9 @@
   ],
   "confirmations": [
     {"about": "Gloria Rhee", "question": "Gloria Rhee (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05, since the first pass leaves her pay out of payroll on that basis."},
-    {"about": "Irene Voss", "question": "Irene Voss (payroll-register.csv): please confirm that Irene Voss's duties were confined to bookkeeping in the office for the whole audit period, and that she never rode on a delivery route. The route log shows no ride-alongs for her."}
+    {"about": "Irene Voss", "question": "Irene Voss (payroll-register.csv): please confirm that Irene Voss's duties were confined to bookkeeping in the office for the whole audit period, and that she never rode on a delivery route. The route log shows no ride-alongs for her."},
+    {"about": "Application APP-AC-0529 note", "question": "Application APP-AC-0529 note: the application says the dispatchers work the phones and that Lena Ortiz rides along about two days a week. route-log.csv records Lena Ortiz (AC-E04) as a ride-along on 60 route days and Paul Haskins (AC-E05) on 2. Please confirm the route log, since it decides the allocation."}
   ],
-  "open_items": [
-    {"about": "Employer's statement about dispatcher ride-alongs",
-      "proposal": "Use the route log, not the application's note, for the ride-along weeks.",
-      "why": "The application says the dispatchers work the phones and that Lena 'rides along about two days a week ... at most two fifths of her time'. route-log.csv records 60 ride-along days for Lena Ortiz and 2 for Paul Haskins in the audit period, so the note understates Paul's road time and does not match Lena's pattern. The records decide (HP-7).",
-      "records": ["application.md", "route-log.csv"],
-      "employer_question": "Application APP-AC-0529 note: please explain the statement that the dispatchers work the phones, when route-log.csv records Paul Haskins (AC-E05) as a ride-along on 2 route days and Lena Ortiz (AC-E04) on 60 route days."}
-  ],
+  "open_items": [],
   "unused_records": {}
 }

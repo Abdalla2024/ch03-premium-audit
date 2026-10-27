@@ -32,6 +32,10 @@ Edition of March 2030.
 **CG-31. Z-200 Other field work.** Different work at sites.
 
 **CG-32. T-610 Courier drivers.** Driving routes.
+
+**CG-41. F-710 Restaurants.** Meals.
+
+**CG-42. F-720 Off-site caterers.** Events.
 """
 
 
@@ -98,57 +102,63 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(sorted(a.amount for a in r.adjustments), [Decimal("50.00"), Decimal("130.00")])
         self.assertTrue(any("no travel days" in o.why for o in r.open_items))
 
-    def test_uninsured_subcontractor_60_percent_by_certificate_dates(self):
+    def test_certificate_must_cover_whole_audit_period(self):
+        # HP-5 (interview 2): a certificate counts only if it covers the whole audit period.
         e = (Employer([["E1", "A", "Crew", "1000.00"]], {"Z-100": (1, "1000.00")})
              .csv("subcontractor-payments.csv", ["date", "subcontractor", "work", "invoice", "amount_paid"],
                   [["2030-02-01", "Acme", "framing", "I1", "1000.00"],
                    ["2030-08-01", "Acme", "framing", "I2", "333.33"],
                    ["2030-03-01", "Nocert", "roofing", "I3", "100.00"],
+                   ["2030-04-01", "Fullco", "roofing", "I4", "500.00"],
                    ["2029-12-31", "Nocert", "roofing", "I0", "999.00"]])
              .csv("insurance-certificates.csv", ["subcontractor", "certificate_no", "coverage_from", "coverage_to"],
-                  [["Acme Ltd", "C1", "2030-01-01", "2030-06-30"]]))
+                  [["Acme Ltd", "C1", "2030-01-01", "2030-06-30"], ["Fullco", "C2", "2029-12-01", "2031-01-31"]]))
         r = e.run({"employees": {"E1": person("Z-100")},
                    "subcontract_work_codes": {"framing": "Z-100", "roofing": "Z-200"},
                    "subcontractor_certificate_matches": {"Acme": "Acme Ltd"}})
-        self.assertEqual(r.totals["Z-100"], Decimal("1200.00"))  # 1000 + 60% of 333.33 = 200.00 (199.998 rounded)
-        self.assertEqual(r.totals["Z-200"], Decimal("60.00"))
-        self.assertTrue(any("not the same" in o.why for o in r.open_items))
+        # Acme's certificate covers the payment date of I1 but not the whole period: both payments added (600 + 200).
+        self.assertEqual(r.totals["Z-100"], Decimal("1800.00"))
+        self.assertEqual(r.totals["Z-200"], Decimal("60.00"))  # Nocert only; Fullco is covered for the whole period
+        self.assertTrue(any("does not change the allocation" in o.why for o in r.open_items))
         self.assertTrue(any("outside the audit period" in n for n in r.notes))
 
-    def test_clerical_site_day_threshold(self):
+    def test_clerical_five_days_moves_to_governing_code(self):
+        # HP-4 (interview 2): whole payroll moves to the field code carrying the most payroll.
         signins = [[f"2030-03-0{d}", "E1", "A", "North lot"] for d in range(1, 5)]
-        signins += [[f"2030-04-0{d}", "E2", "B", "North lot"] for d in range(1, 6)]
-        e = (Employer([["E1", "A", "Clerk", "100.00"], ["E2", "B", "Clerk", "200.00"]], {"C-110": (2, "300.00")})
+        signins += [[f"2030-04-0{d}", "E2", "B", "North lot"] for d in range(1, 5)] + [["2030-12-25", "E2", "B", "North lot"]]
+        e = (Employer([["E1", "A", "Clerk", "100.00"], ["E2", "B", "Clerk", "200.00"],
+                       ["E3", "C", "Crew", "300.00"], ["E4", "D", "Crew", "250.00"]], {"C-110": (4, "850.00")})
              .csv("site-signin-log.csv", ["date", "employee_id", "name", "site"], signins))
-        r = e.run({"employees": {"E1": person("C-110"), "E2": person("C-110")}, "site_codes": {"North lot": "Z-100"}})
-        self.assertEqual(r.totals, {"C-110": Decimal("100.00"), "Z-100": Decimal("200.00")})
-        self.assertTrue(any(o.about == "B" for o in r.open_items))
+        r = e.run({"employees": {"E1": person("C-110"), "E2": person("C-110"),
+                                 "E3": person("Z-200"), "E4": person("Z-100")}})
+        self.assertEqual(r.governing_code, "Z-200")
+        self.assertEqual(r.totals, {"C-110": Decimal("100.00"), "Z-100": Decimal("250.00"), "Z-200": Decimal("500.00")})
+        # HP-15: the holiday sign-in is used as written and sent to the employer, not dropped.
+        self.assertEqual(len(r.questionable), 1)
+        self.assertTrue(any("2030-12-25" in t for _, t in r.questions))
 
-    def test_threshold_met_but_no_code_keeps_clerical_as_open_item(self):
+    def test_threshold_met_but_no_field_code_keeps_clerical_as_open_item(self):
         signins = [[f"2030-04-0{d}", "E1", "A", "Client office"] for d in range(1, 7)]
         e = (Employer([["E1", "A", "Clerk", "100.00"]], {"C-110": (1, "100.00")})
              .csv("site-signin-log.csv", ["date", "employee_id", "name", "site"], signins))
-        r = e.run({"employees": {"E1": person("C-110")}, "site_codes": {"Client office": None}})
+        r = e.run({"employees": {"E1": person("C-110")}})
         self.assertEqual(r.totals, {"C-110": Decimal("100.00")})
-        self.assertTrue(r.accepts_employer_split)
+        self.assertIsNone(r.governing_code)
         self.assertEqual(len(r.open_items), 1)
+        self.assertTrue(any(about == "A" for about, _ in r.questions))
 
-    def test_unmapped_site_is_an_error_not_a_guess(self):
-        signins = [[f"2030-04-0{d}", "E1", "A", "Mystery"] for d in range(1, 7)]
-        e = (Employer([["E1", "A", "Clerk", "100.00"]], {"C-110": (1, "100.00")})
-             .csv("site-signin-log.csv", ["date", "employee_id", "name", "site"], signins))
-        with self.assertRaises(WorksheetError):
-            e.run({"employees": {"E1": person("C-110")}, "site_codes": {}})
-
-    def test_no_split_whole_pay_to_most_hours(self):
-        ts = [["2030-01-02", "E1", "A", "J1", "alpha", "8"]] * 3 + [["2030-01-03", "E1", "A", "J2", "beta", "8"]] * 4
+    def test_no_split_whole_pay_to_most_days_not_hours(self):
+        # HP-13: days, not hours. alpha has more hours (3 x 10), beta more days (4 x 2).
+        ts = [[f"2030-01-0{d}", "E1", "A", "J1", "alpha", "10"] for d in (2, 3, 4)]
+        ts += [[f"2030-01-1{d}", "E1", "A", "J2", "beta", "2"] for d in (2, 3, 4, 5)]
         e = (Employer([["E1", "A", "Crew", "500.00"]], {"Z-100": (1, "500.00")})
              .csv("crew-timesheets.csv", ["date", "employee_id", "name", "job_id", "work_type", "hours"], ts))
         r = e.run({"employees": {"E1": person("Z-100")}, "work_type_codes": {"alpha": "Z-100", "beta": "Z-200"}})
         self.assertEqual(r.totals, {"Z-200": Decimal("500.00")})
         self.assertEqual(r.adjustments[0].kind, "Reclassified")
 
-    def test_whole_week_route_split(self):
+    def test_route_split_needs_two_ride_days_in_the_pay_week(self):
+        # HP-2 (interview 2): two or more ride days in a Monday-Sunday week moves that week; one day does not.
         routes = [["2030-01-02", "R1", "D1", "E1", "5"], ["2030-01-16", "R1", "D1", "E1", "5"],
                   ["2030-01-17", "R1", "D1", "E1", "5"], ["2030-01-09", "R1", "D1", "", "5"]]
         weekly = [["2030-01-01", "2030-01-07", "E1", "100.00"], ["2030-01-08", "2030-01-14", "E1", "110.00"],
@@ -157,7 +167,26 @@ class RuleTests(unittest.TestCase):
              .csv("route-log.csv", ["date", "route_id", "driver_id", "ride_along_id", "stops"], routes)
              .csv("weekly-payroll.csv", ["week_start", "week_end", "employee_id", "gross_pay"], weekly))
         r = e.run({"employees": {"E1": person("C-110")}, "route_code": "T-610"})
-        self.assertEqual(r.totals, {"C-110": Decimal("110.00"), "T-610": Decimal("220.00")})
+        self.assertEqual(r.totals, {"C-110": Decimal("210.00"), "T-610": Decimal("120.00")})
+
+    def test_caterer_code_needs_40_percent_offsite_receipts(self):
+        # HP-14: F-720 only if off-site catering is 40% or more of gross receipts.
+        ws = {"employees": {"E1": person("F-720"), "E2": person("F-710")},
+              "receipts": {"file": "gross-receipts.csv", "offsite_columns": ["offsite"], "other_columns": ["dine_in"]}}
+        for offsite, expected in (("39.99", {"F-710": Decimal("300.00")}),
+                                  ("40.00", {"F-710": Decimal("200.00"), "F-720": Decimal("100.00")})):
+            e = (Employer([["E1", "A", "Event Cook", "100.00"], ["E2", "B", "Cook", "200.00"]],
+                          {"F-710": (1, "200.00"), "F-720": (1, "100.00")})
+                 .csv("gross-receipts.csv", ["month", "dine_in", "offsite"], [["2030-01", f"{100 - Decimal(offsite)}", offsite]]))
+            self.assertEqual(e.run(ws).totals, expected, offsite)
+
+    def test_allocation_reconciles_to_register_plus_adjustments(self):
+        e = Employer([["E1", "Owner", "Owner", "1000.00", "0", "0.00"], ["E2", "B", "Tech", "10.00", "2", "100.00"]],
+                     {"C-110": (2, "1010.00")}, travel=True)
+        r = e.run({"employees": {"E1": person("Z-100"), "E2": person("Z-100")},
+                   "owners": {"E1": {"included": True, "field_work": True, "field_code": "Z-100", "basis": "x"}}})
+        self.assertEqual(r.reconciliation[-1][1], sum(r.totals.values()))
+        self.assertEqual(r.totals, {"Z-100": Decimal("63700.00") + Decimal("10.00") + Decimal("6.00")})
 
     def test_unknown_code_in_worksheet_is_rejected(self):
         e = Employer([["E1", "A", "Clerk", "100.00"]], {"C-110": (1, "100.00")})

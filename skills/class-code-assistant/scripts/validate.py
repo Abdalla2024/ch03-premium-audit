@@ -41,6 +41,7 @@ def main(argv=None):
             failures.append(message)
 
     guide = Guide(args.guide.read_text())
+    house_practice = (Path(__file__).resolve().parent.parent / "references" / "house-practice.md").read_text()
     slugs = sorted(p.name for p in args.employers.iterdir() if p.is_dir())
     report = (args.out / "audit-report.md").read_text()
     questions = (args.out / "audit-questions.md").read_text()
@@ -87,6 +88,25 @@ def main(argv=None):
         check("Employer's split: accepted" in sec or "Employer's split: not accepted" in sec,
               f"{name}: the report does not state whether the employer's split is accepted")
 
+        recon = re.search(r"\| First-pass total \(equals the sum of the codes CSV\) \| ([\d,.]+) \|", sec)
+        check(recon is not None and Decimal(recon.group(1).replace(",", "")) == sum(totals.values(), Decimal(0)),
+              f"{name}: reconciliation total missing or differs from the CSV total {sum(totals.values(), Decimal(0))}")
+
+        folder = {p.name for p in (args.employers / slug).iterdir()}
+        for cited in sorted(set(re.findall(r"\b([a-z][a-z0-9-]*\.(?:csv|md))\b", sec))):
+            check(cited in folder, f"{name}: cites record {cited}, which is not in the employer file")
+        for ref in sorted(set(re.findall(r"\bCG-\d+\b", sec))):
+            check(ref in guide.paragraphs, f"{name}: cites {ref}, which is not a paragraph in the guide")
+        for ref in sorted(set(re.findall(r"\b(HP-\d+|R\d+)\b", sec))):
+            check(re.search(rf"\b{ref}\b", house_practice) is not None,
+                  f"{name}: cites {ref}, which is not defined in house-practice.md")
+
+        items = re.search(r"### Open items: unresolved judgements\n\n.*?\n\n(.*?)\n\n", sec, re.S)
+        check(items is not None, f"{name}: no open items section")
+        for row in (items.group(1).splitlines()[2:] if items and items.group(1).startswith("|") else []):
+            about = row.split(" | ")[1]
+            check(f"**{about}.**" in qtext or about in qtext, f"{name}: open item {about!r} is not on the question list")
+
     check(re.search(r"\brate[sd]? (of|at) \d|premium (of|is) \$?\d", report, re.I) is None,
           "audit-report.md appears to state a rate or premium figure")
 
@@ -101,6 +121,12 @@ def main(argv=None):
 
     changed = subprocess.run(["git", "diff", "--name-only", "HEAD", "--", "interviews"], capture_output=True, text=True)
     check(changed.returncode == 0 and not changed.stdout.strip(), f"interview exports changed since commit: {changed.stdout}")
+    tracked = set(subprocess.run(["git", "ls-files", "interviews"], capture_output=True, text=True).stdout.split())
+    on_disk = {f"interviews/{p.name}" for p in Path("interviews").glob("*.md")}
+    check(on_disk and on_disk <= tracked, f"interview exports not committed: {sorted(on_disk - tracked)}")
+    for f in sorted(tracked):
+        history = subprocess.run(["git", "log", "--format=%h", "--", f], capture_output=True, text=True).stdout.split()
+        check(len(history) == 1, f"{f} was changed after it was first committed ({len(history)} commits touch it)")
 
     for f in failures:
         print(f"FAIL {f}")
