@@ -14,8 +14,8 @@ employer. It classifies people and allocates payroll. It does **not** set rates,
   excerpt (paragraphs `CG-nn`), read from the location in `references/sources.json` on every run. Public
   classification manuals, such as NCCI or state manuals, do not apply and give wrong answers. Never use them.
 - **Apply house practice as the auditor stated it.** `references/house-practice.md` keeps three lists apart:
-  confirmed rules from interviews 1 and 2 (HP-1 to HP-15), stated gaps where the auditor has no rule, and the Skill's
-  own readings (R2, R3, R4, R6, R14), which are always raised as open items. The numbers are in `references/house_practice.json`.
+  confirmed rules from interviews 1 to 3 (HP-1 to HP-17), stated gaps where the auditor has no rule, and the Skill's
+  own readings (R2, R3, R4, R6, R14, R15), which are always raised as open items where they matter. The numbers are in `references/house_practice.json`.
 - **Classify by actual duties, not titles (HP-1).** The records in the file decide, not the employer's application
   (HP-7).
 - **Gray areas: propose, explain and flag, never invent.** When neither the guide nor house practice covers a case,
@@ -33,9 +33,9 @@ Per employer, one folder named by its slug (for example `acme-roofing`) holding:
 |---|---|---|
 | `payroll-register.csv` (`employee_id,name,position,wages_paid`, optional `travel_days,travel_allowance_paid`) | yes | wages per person; out-of-town allowance |
 | `application.md` (table of code, employees, payroll; employer's note) | yes | the employer's own split, for comparison |
-| a `.md` stating `Audit period <Month D, YYYY> to <Month D, YYYY>` (usually `business-description.md`) | yes | audit period filter |
+| a `.md` stating `Audit period <Month D, YYYY> to <Month D, YYYY>`: the business description defines it (HP-17) | yes | audit period filter; a missing or differing statement elsewhere is an open item |
 | `field-notes.md`, `business-description.md` | no | duties, owner status, subcontractors |
-| `*timesheet*.csv` (`date,employee_id,work_type,hours`) | no | crew work by type, counted in days (HP-2, HP-13, R2) |
+| `*timesheet*.csv` (`date,employee_id,work_type,hours`) | no | crew work by type, counted in days (HP-2, HP-13): at a roofing-and-siding contractor, 15 or more roof days means R-310, fewer R-320 (HP-16); other mixes R2 |
 | `*sign*in*.csv` (`date,employee_id,site`) | no | clerical job-site days; five or more moves the whole pay to the governing code (HP-4) |
 | `route-log.csv` (`date,driver_id,ride_along_id`) + `weekly-payroll.csv` (`week_start,week_end,employee_id,gross_pay`) | no | route split: pay weeks with two or more ride days go to T-610 (HP-2) |
 | `subcontractor-payments.csv` (`date,subcontractor,work,invoice,amount_paid`) + `insurance-certificates.csv` (`subcontractor,certificate_no,coverage_from,coverage_to`) | no | uninsured subcontractors; a certificate must cover the whole audit period (HP-5) |
@@ -90,12 +90,14 @@ The run stops with `error: ...` and a non-zero exit, writing nothing for that em
 
 Conditions the records can't settle become open items and do not stop the run: a tie in timesheet days, a
 certificate name mismatch, an allowance with no travel days, weekly pay that does not sum to the register, a sign-in on
-a fixed holiday (used as written and sent to the employer, HP-15), a five-day threshold met at an employer with no
+a holiday in a sign-in log, route log or crew timesheet (used as written, sent to the employer, and marked decisive or
+not, HP-15), an audit period missing from the business description or stated differently elsewhere (HP-17), a five-day
+threshold met at an employer with no
 field code, or a caterer with no receipts record.
 
 ## Supporting files
 
-- `references/house-practice.md`: the audit team's unwritten rules from the interview, with timestamps, plus this
+- `references/house-practice.md`: the audit team's unwritten rules from the three interviews, with timestamps, plus the
   stated gaps and the Skill's readings.
 - `references/house_practice.json`: the numeric parameters (flat owner amount, day threshold, subcontractor share,
   allowance cap).

@@ -9,10 +9,10 @@ judgment, make the best-supported proposal and add an `open_items` entry; do not
 
 | Field | Content |
 |---|---|
-| `employees.<id>.duty_code` | The code describing the person's **actual** duties from the file (HP-1). For crew with timesheets, give the expected code; the timesheets then decide by days (HP-13, R2). For office staff, give `C-110`; the engine applies the five-day sign-in test and moves the person to the governing code (HP-4). For a catering crew member, give the caterer code; the engine applies the 40% receipts test (HP-14). |
+| `employees.<id>.duty_code` | The code describing the person's **actual** duties from the file (HP-1). For crew with timesheets, give the expected code; the timesheets then decide by days (HP-13): the roof-day test at a roofing-and-siding contractor (HP-16), otherwise most days (R2). For office staff, give `C-110`; the engine applies the five-day sign-in test and moves the person to the governing code (HP-4). For a catering crew member, give the caterer code; the engine applies the 40% receipts test (HP-14). |
 | `employees.<id>.basis` | One or two sentences: what the person does, the record and date that show it, and the guide paragraph. Say so when the only evidence is a job title. |
 | `employees.<id>.records` | Files the basis rests on. The payroll register is added automatically. |
-| `owners.<id or name>` | `included` (no election of exclusion), `field_work`, `field_code` (the employer's trade code, HP-3), `basis`, `records`. Excluded owners are listed for the record only. |
+| `owners.<id or name>` | `included` (no election of exclusion), `field_work`, `field_code` (the employer's trade code, HP-3), `basis`, `records`. An included owner is counted at the flat amount under `field_code` with field work, or under C-110 without (HP-3). Excluded owners are listed for the record only. |
 | `work_type_codes` | Timesheet `work_type` to code. |
 | `route_code` | Code for driver payroll in route ride-along weeks, when a route log exists (T-610, HP-2). |
 | `receipts` | `{file, offsite_columns, other_columns}`: the gross receipts record and which columns are off-site catering, for the HP-14 test. |
