@@ -1,0 +1,25 @@
+Context: Interview 2 is complete and it was my second of three allowed conversations with Nadia (ai senior premium auditor). The current skill and six employer outputs are built. My next interview must be the final one, so i want to prepare completely before using it.
+
+Instructions: Audit the current repo, both interview transcripts, the assignment, the company guide, source records, skill, and all six outputs. Trace every allocation adn open item back to evidence. Identify unsupported assumption, inconsistencies, and questions that could chnage an allocation. Pay special attention to the inferred employee level payroll splits and every unresolved item from your last report. Do not contact Nadia or employers, change files, or make new assumptions.
+
+Expertise and output: Review this as a careful premium audit analyst. Give me: 
+1. Any clear errors or unsupported results, with affected employer, employee/payment, amount, and source evidence.
+2. A complete list of missing information that i need to obtain from the final interview, grouped and prioritzed by whether they could change allocations, clarify documentation, or cover future cases. Include the exact records and propose treatment Nadia should review.
+3. Items that cannot be resolved by nadia and must stay flagged for employer confirmation or human review
+4. A clear judgement on whether the project is ready for that final interview, and what i should review first.
+
+Verificaiton: Run the existing checks needed to confirm the current outputs and report exactly what ran and passed. Do not add tests or edit files. Keep secrets protected. Nothing should be committed or pushed here.
+
+---
+
+Context: Ok i did the third and final interview. The transcript is in the interviews folder. The current skill and six employer outputs are built; a recent audit identified open decisions and a few report wording fixes.
+
+Instructions: Read the repo guidance assignment all three interview transcripts the prior audit findings the current skill and its supporting sources keep every original interview export complete and unchanged apply the final interview's answers to the reusable skill and rerun it on all six employers using the company guide and employer records don't contact anyone or make up rules If an issue remains unresolved, clearly flag it for employer confirmation or human review.
+
+Also address the audit's fix list: flag lena's holiday rides for confirmation, inlude the kyle brandt allowance proposal, clarify kent island certificate open item, correct the raymond dunmore and teresa lindqvist wording, and ensure hp-15 is described only where it actually affected a decision. Follow nadia's final answers if they change any of these treatments.
+
+Expertise and output: Work like a careful premium audit analyst. Keep confirmed rules, source-backed facts, interpretations, and unresolved items distinct. Preserve the assignments exact file paths and CSV format. Show every allocation and adjustment with its supporting records and company rule references. Do not hard code employer results. The skill classifies and allocates payroll only. It does not set rates or quote premiums.
+
+Verification: Run the existing tests and validator. Confirm each employer's payroll reconciles, cited records and rules exist, every adjustment or open item appears in the questions, and the required interview and coding session evidence is present. Report exactly what you ran and what remains unverified.
+
+Keep secrets out of the repo . Commit the completed update . Do not push or deploy . Summarize the changes, remaining limitations, and verification results
