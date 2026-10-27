@@ -65,20 +65,20 @@ Commands run on the committed revision, with their results:
 
 | Command | Result |
 |---|---|
-| `python3 -m unittest discover -s tests` | 13 tests OK. They cover the guide parser, owner flat amount, allowance cap and zero-day allowance, the 60% uninsured subcontractor share with certificate dates and name mismatch, the five-day clerical threshold, the threshold with no applicable code, an unmapped site raising an error, the no-split rule, the whole-week route split, unknown-code rejection, question coverage, the CSV format and split inference. All use a synthetic employer. |
-| `python3 skills/class-code-assistant/scripts/validate.py` | 165/165 checks pass. It checks CSV header, cents and zero rows, `rationale_ref` against the guide, CSV totals against the report, a section per employer in both files, every adjustment named in that employer's questions, a stated accept/not-accept decision, no rate or premium figures, no employer names or IDs in the Skill code, and an unchanged interview export. |
-| `run.py --all` (fresh fetch) and `--employer larkspur-lane-bistro --local .cache/sources` | Same CSV for that employer either way. |
-| Error paths | A missing worksheet, an unfilled scaffold and a missing guide each stop with a clear `error:` and exit 1. |
-| Hand check | Patuxent Electric E-510 (306,024.85 + 63,700.00 + 3 × 720.00 + 390.00 = 372,274.85), Severn Homebuilders subcontractor additions (60% of 41,155.65 = 24,693.39 H-420; 60% of 31,645.65 = 18,987.39 R-310) and the Bay Crest Exteriors totals were recomputed by hand from the source files and match. |
+| `python3 -m unittest discover -s tests` | 14 tests OK, all on a synthetic employer. They cover the guide parser; the owner flat amount; the allowance cap and an allowance with no travel days; a certificate that must cover the whole audit period, plus a name mismatch; the five-day sign-in test moving pay to the governing code, including a holiday sign-in used as written; the threshold at an employer with no field code; the no-split rule counted in days, not hours; the route split needing two ride days in a week; the 40% caterer receipts test at 39.99% and 40.00%; reconciliation; unknown-code rejection; question coverage; the CSV format; and the split pairing. |
+| `python3 skills/class-code-assistant/scripts/validate.py` | 270/270 checks pass. It checks CSV header, cents, zero rows and `rationale_ref` against the guide; CSV totals against the report and the reconciliation total; every cited record file exists in that employer's folder; every cited `CG-nn` is in the guide and every `HP-n` or `R-n` is in `house-practice.md`; every adjustment and open item is on that employer's question list; no rate or premium figures; no employer names or IDs in the Skill code; and both interview exports are committed and untouched since their first commit. It was also run against a deliberately broken copy: a changed CSV cent, an unknown rule label and a non-existent record are each reported and the exit status is 1. |
+| `run.py --all` (fresh fetch from the Drive sources) and `--employer severn-homebuilders --local .cache/sources` | Same CSV for that employer either way. |
+| Error paths | An unfilled worksheet and a missing guide each stop with a clear `error:` and exit 1. |
+| Hand check | Annapolis T-610: 153,886.20 + 22,808.75 (Lena Ortiz's 25 weeks with two or more ride days) = 176,694.95. Severn R-310: 60% of 45,945.65 (all three Kent Island payments) = 27,567.39. Severn H-420: 284,670.30 + 59,840.70 + 60% of 41,155.65 = 369,204.39. Larkspur: off-site catering 362,410.85 of 1,647,026.05 receipts = 22.00%, so all 340,725.35 is F-710. Patuxent E-510: 306,024.85 + 63,700.00 + 3 × 720.00 + 390.00 = 372,274.85. All recomputed by hand from the source files and matched. |
 
-Not verified. Each of these is an open item in the report:
+Not verified. Each item that affects an allocation is an open item in the report:
 
-- The readings of house practice (A1 to A6 in `references/house-practice.md`) have not been confirmed by the auditor.
-- The code given to a clerical person who passes the five-day test (Teresa Lindqvist, Dana Whitcomb) is the Skill's
-  proposal.
-- The call-first ranking rule is the Skill's own; the auditor has not said how she prioritises calls.
-- The employer-level comparison relies on an inferred per-person reading of each application. That reading is unique for
-  all six employers, but it is still an inference.
+- The Skill's readings R2 (most timesheet days decide a crew member's single code), R3, R4 (which payroll decides the
+  governing code), R6 (allowance with no travel days) and R14 (receipt months that partly overlap the period) are not
+  confirmed by the auditor. On these six files, only R2 and R6 change an allocation.
+- Whether the July 2025 guide edition applies to the whole audit period. Nadia knows only the guide she has.
+- The 'Employer's code' column pairs people with the application's totals. The application names no one, so this is
+  used only to explain differences, never to classify.
 - The Drive fetcher depends on Google's public folder-view page; if its markup changes, fetching fails loudly and
   `--local` still works.
 
@@ -86,9 +86,9 @@ Not verified. Each of these is an open item in the report:
 
 | Employer | Employer's split | Rests on |
 |---|---|---|
-| Harbor Point Legal | Accepted | payroll register; field notes (all office work). Tomas Reyes's six condominium sign-ins are an open item. |
-| Larkspur Lane Bistro | Accepted | payroll register; field notes (catering crew does off-site events, CG-42). The crew's restaurant shifts have no time record: open item. |
-| Bay Crest Exteriors | Not accepted | crew timesheets (eight crew members on roofing, siding and gutters, not office work); site sign-in log (estimator, 9 site days) |
-| Patuxent Electric | Not accepted | business description (owner not excluded); field notes and site sign-in log (owner does field work); register travel columns (allowance above 47.00 per day) |
-| Severn Homebuilders | Not accepted | site sign-in log (office manager, 11 site days); subcontractor payments against insurance certificates (Tidewater Drywall has none; Kent Island's lapsed 2026-01-31) |
-| Annapolis Courier | Not accepted | route log and weekly payroll (both dispatchers rode along; whole weeks moved to T-610) |
+| Harbor Point Legal | Accepted | payroll register and field notes (all office work). Tomas Reyes has 6 sign-in days, but the firm has no field code to move him to: open item. |
+| Larkspur Lane Bistro | Not accepted | gross-receipts.csv: off-site catering is 22.00% of receipts, below the 40% test (HP-14), so the catering crew is F-710, not F-720 |
+| Bay Crest Exteriors | Not accepted | crew timesheets (eight crew members on roofing, siding and gutters, counted in days); site sign-in log (estimator, 9 days, so the governing code R-310) |
+| Patuxent Electric | Not accepted | business description (owner not excluded); field notes and site sign-in log (owner does field work, so the flat 63,700.00 under E-510); register travel columns (allowance above 47.00 per day) |
+| Severn Homebuilders | Not accepted | site sign-in log (office manager, 11 days, so the governing code H-420); certificates (Tidewater Drywall has none; Kent Island's ends 2026-01-31, before the period ends, so all three of its payments are added) |
+| Annapolis Courier | Not accepted | route log and weekly payroll (Lena Ortiz's 25 weeks with two or more ride days go to T-610; Paul Haskins's two single-day weeks stay C-110) |

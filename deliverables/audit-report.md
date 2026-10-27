@@ -3,7 +3,7 @@
 Prepared by the class-code-assistant Skill as a **first pass for review by Nadia Brennan, Senior Premium Auditor**. It is not audit work until she has reviewed it (house practice HP-11). It classifies and allocates payroll only; it does not set rates or quote premium.
 
 - Classification rules: Linden Shore Mutual classification guide excerpt, edition of July 2025, sha256 `89480f691737`, read from https://drive.google.com/file/d/1L5MxLny7erhjSwCvl43DTSmAt3wgv22j/view.
-- Employer files read from https://drive.google.com/drive/folders/1pt8gzX8HDuaAq6g8ZFeQ66zbVIYdlN_n at 2026-10-27T02:22:51+00:00.
+- Employer files read from https://drive.google.com/drive/folders/1pt8gzX8HDuaAq6g8ZFeQ66zbVIYdlN_n at 2026-10-27T02:26:18+00:00.
 - Three kinds of statement are kept apart:
   - **Confirmed rules** (`HP-n`) are what Nadia Brennan stated in interviews 1 and 2, listed with timestamps in `skills/class-code-assistant/references/house-practice.md`, together with the guide (`CG-nn`).
   - **Facts** cite the employer record they come from.
@@ -25,6 +25,8 @@ Nadia left the choice to the analyst, with reasons (HP-12). The order ranks empl
 
 1. **Bay Crest Exteriors**: 319,158.10 of payroll is placed differently from the employer's split. The largest drivers are Teresa Lindqvist: reclassified (68,430.90 under R-310); Luis Carrillo: reclassified (54,880.40 under R-310); Brian Tull: reclassified (52,115.75 under R-310). Open items for the employer: Crew members with more than one type of work.
 2. **Larkspur Lane Bistro**: 114,293.80 of payroll is placed differently from the employer's split. The largest drivers are Hannah Pryor: caterer receipts test (46,725.55 under F-710); Ivan Petrov: caterer receipts test (38,190.40 under F-710); Clara Bose: caterer receipts test (29,377.85 under F-710). Open items for the employer: none.
+
+Close call for second place: Severn Homebuilders (112,101.48) is within 5% of Larkspur Lane Bistro (114,293.80). Of the 112,101.48, 52,260.78 is added only because certificates are missing from the file and could change if the employer produces them. Nadia may prefer that call.
 
 ## Summary
 

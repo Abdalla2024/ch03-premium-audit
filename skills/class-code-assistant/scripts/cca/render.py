@@ -82,6 +82,13 @@ def report(results, guide, run):
         out.append(f"{i}. **{r.rec['employer_name']}**: {fmt(change(r))} of payroll is placed differently from the "
                    f"employer's split. The largest drivers are {_drivers(r)}. Open items for the employer: "
                    + ("; ".join(o.about for o in r.open_items) or "none") + ".")
+    if len(ordered) > 2 and change(ordered[1]) and change(ordered[1]) - change(ordered[2]) <= change(ordered[1]) / 20:
+        second, third = ordered[1], ordered[2]
+        out += ["", f"Close call for second place: {third.rec['employer_name']} ({fmt(change(third))}) is within 5% of "
+                    f"{second.rec['employer_name']} ({fmt(change(second))}). Of the {fmt(change(third))}, "
+                    f"{fmt(sum((a.amount for a in third.adjustments if a.kind == 'Uninsured subcontractor payment added'), ZERO))} "
+                    f"is added only because certificates are missing from the file and could change if the employer "
+                    f"produces them. Nadia may prefer that call."]
     out += ["", "## Summary", "", "| Employer | Employer's split | Decision rests on |", "|---|---|---|"]
     for r in results:
         out.append(f"| {r.rec['employer_name']} | {'Accepted' if r.accepts_employer_split else 'Not accepted'} | "
