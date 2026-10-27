@@ -3,7 +3,7 @@
 Prepared by the class-code-assistant Skill as a **first pass for review by Nadia Brennan, Senior Premium Auditor**. It is not audit work until she has reviewed it (house practice HP-11). It classifies and allocates payroll only; it does not set rates or quote premium.
 
 - Classification rules: Linden Shore Mutual classification guide excerpt, edition of July 2025, sha256 `89480f691737`, read from https://drive.google.com/file/d/1L5MxLny7erhjSwCvl43DTSmAt3wgv22j/view.
-- Employer files read from https://drive.google.com/drive/folders/1pt8gzX8HDuaAq6g8ZFeQ66zbVIYdlN_n at 2026-10-27T01:34:45+00:00.
+- Employer files read from https://drive.google.com/drive/folders/1pt8gzX8HDuaAq6g8ZFeQ66zbVIYdlN_n at 2026-10-27T01:36:34+00:00.
 - House practice: the audit team's unwritten rules from interview 1, labelled HP-1 to HP-12 in `skills/class-code-assistant/references/house-practice.md`. Readings A1 to A6 in the same file are this Skill's interpretations; every place one changes an allocation is listed as an open item.
 - **Facts** below are cited to the employer record they come from. **Open items** are proposals for gray areas: each says how the first pass treated the case and why, and needs Nadia's confirmation.
 
