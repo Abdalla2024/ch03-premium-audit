@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M5XS62FAXEK7346S9WH98WER",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "skills/class-code-assistant/references/house-practice.md",
+    "skills/class-code-assistant/references/house_practice.json",
+    "skills/class-code-assistant/scripts/cca/records.py",
+    "skills/class-code-assistant/scripts/cca/render.py",
+    "skills/class-code-assistant/scripts/cca/rules.py",
+    "tests/test_rules.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 72,
+    "cache_creation_tokens": 70519,
+    "cache_read_tokens": 8201882,
+    "output_tokens": 41075,
+    "api_call_count": 36
+  }
+}
