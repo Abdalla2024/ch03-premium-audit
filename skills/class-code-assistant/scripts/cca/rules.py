@@ -37,6 +37,7 @@ class Person:
     lines: list = field(default_factory=list)
     records: list = field(default_factory=list)
     employer_code: str | None = None
+    evidence: str = ""  # plain statement of the time records, worded for the employer question list
 
     @property
     def primary_code(self):
@@ -137,6 +138,8 @@ def allocate(guide, hp, rec, ws):
     reg_file = rec["register_file"]
 
     def code_ok(code, where):
+        if not code:
+            raise WorksheetError(f"{where} is not filled in; decide it from the records (see SKILL.md, step 3)")
         try:
             guide.ref_for(code)
         except ValueError as exc:
@@ -185,6 +188,8 @@ def allocate(guide, hp, rec, ws):
     work_codes = ws.get("work_type_codes", {})
     site_codes = ws.get("site_codes", {})
     route_code = ws.get("route_code") and code_ok(ws["route_code"], "route_code")
+    if ride_days and not route_code:
+        raise WorksheetError(f"{rec['route_log_file']} records ride-alongs, but worksheet route_code is not filled in")
     split_people, ride_people = [], []
 
     for e in rec["register"]:
@@ -195,7 +200,7 @@ def allocate(guide, hp, rec, ws):
 
         if owner and owner.get("included") and owner.get("field_work"):
             code = code_ok(owner.get("field_code") or duty, f"owners.{e['id']}.field_code")
-            p.records += owner.get("records", [])
+            p.records = _uniq(p.records + owner.get("records", []))
             p.lines = [Line(code, owner_flat, f"Included owner who does field work ({owner['basis']}). Counted at the "
                                               f"flat {fmt(owner_flat)} (HP-3) under the code for the work done (CG-05).")]
             res.adjustments.append(Adjustment(
@@ -223,6 +228,7 @@ def allocate(guide, hp, rec, ws):
             basis = (f"Crew timesheets: {mix}. The whole of the pay goes to {final}, the code with the most recorded "
                      f"hours (HP-2: one person's pay is not split; reading A2).")
             p.records.append(rec["timesheets_file"])
+            p.evidence = f"{rec['timesheets_file']} records {mix} for {e['name']}."
             if len(by_code) > 1:
                 split_people.append((p, dict(by_code), final))
             if len(leaders) > 1:
@@ -234,6 +240,8 @@ def allocate(guide, hp, rec, ws):
             days = site_days[e["id"]]
             p.records.append(rec["signins_file"])
             dates = ", ".join(d.isoformat() for d in sorted(days))
+            p.evidence = (f"{rec['signins_file']} records {e['name']} at a job site on {len(days)} day(s): " + "; ".join(
+                f"{d.isoformat()} {', '.join(sorted(days[d]))}" for d in sorted(days)) + ".")
             for d in sorted(days):
                 if (d.month, d.day) in FIXED_HOLIDAYS:
                     res.open_items.append(OpenItem(
@@ -360,8 +368,14 @@ def allocate(guide, hp, rec, ws):
             [rec["route_log_file"], rec["weekly_payroll_file"]]))
 
     for item in ws.get("open_items", []):
-        res.open_items.append(OpenItem(item["about"], item["proposal"], item["why"], item.get("records", []),
-                                       item.get("rule", "HP-10")))
+        target = next((o for o in res.open_items if o.about == item.get("merge_with")), None)
+        if target:  # the analyst's context for an item the rules already raised
+            target.proposal = item.get("proposal", target.proposal)
+            target.why += " " + item["why"]
+            target.records = _uniq(target.records + item.get("records", []))
+        else:
+            res.open_items.append(OpenItem(item["about"], item["proposal"], item["why"], item.get("records", []),
+                                           item.get("rule", "HP-10")))
 
     totals = defaultdict(Decimal)
     for line in [l for p in res.people for l in p.lines] + res.sub_lines:
@@ -377,7 +391,7 @@ def allocate(guide, hp, rec, ws):
                 f"The employer reported {p.name} ({p.position}) under {p.employer_code}. The records put the "
                 f"{fmt(p.wages)} under {p.primary_code}: {p.lines[0].basis}", p.records, "HP-1, HP-7"))
         for a in res.adjustments:
-            if a.about == p.name and p.employer_code and p.employer_code != a.code:
+            if a.about == p.name and a.kind != "Reclassified" and p.employer_code and p.employer_code != a.code:
                 a.detail += f" The employer reported {p.name} under {p.employer_code}."
 
     _questions(res, rec, ws)
@@ -472,22 +486,25 @@ def _questions(res, rec, ws):
                        f"in those weeks (total {fmt(a.amount)}).")
         elif a.kind == "Travel allowance above the daily exclusion":
             row = next(e for e in rec["register"] if e["name"] == a.about)
-            q(a.about, f"{a.about} ({reg}, travel columns): please confirm the {row['travel_days']} out-of-town travel "
-                       f"days and the {fmt(row['travel_allowance'])} allowance paid, with the trip dates and job.")
+            if row["travel_days"]:
+                q(a.about, f"{a.about} ({reg}, travel columns): please confirm the {row['travel_days']} out-of-town "
+                           f"travel days and the {fmt(row['travel_allowance'])} allowance paid, with the trip dates and job.")
+            else:
+                q(a.about, f"{a.about} ({reg}, travel columns): the register shows a {fmt(row['travel_allowance'])} "
+                           f"travel allowance but no travel days. Please say what the payment was for and, if it was "
+                           f"for out-of-town work, send the dates and job.")
         elif a.kind == "Reclassified":
             recs = ", ".join(r for r in p.records if r != reg)
-            q(a.about, f"{a.about} ({recs or reg}): please confirm {a.about}'s actual duties during the audit period, "
-                       f"and the records this first pass relied on for them: {p.lines[0].basis}")
+            q(a.about, f"{a.about} ({recs or reg}): the application reports {a.about} ({p.position}) under "
+                       f"{p.employer_code}. {p.evidence or 'The records describe other work.'} Please confirm "
+                       f"{a.about}'s actual duties during the audit period and that these records are complete.")
 
     for p in res.people:
         if p.name in adjusted:
             continue
-        if rec["timesheets_file"] in p.records:
-            q(p.name, f"{p.name} ({rec['timesheets_file']}): please confirm that the crew timesheets are complete for "
-                      f"{p.name} for the audit period. {p.lines[0].basis.split('. The whole')[0]}.")
-        if rec["signins_file"] in p.records:
-            q(p.name, f"{p.name} ({rec['signins_file']}): please confirm that the job-site sign-ins recorded for "
-                      f"{p.name} are complete and correct: {p.lines[0].basis.split(rec['signins_file'])[-1].strip()}")
+        if p.evidence:
+            q(p.name, f"{p.name} ({', '.join(r for r in p.records if r != reg)}): {p.evidence} Please confirm that "
+                      f"these records are complete and correct for the audit period.")
         travel = next((e for e in rec["register"] if e["id"] == p.id and e["travel_allowance"]), None)
         if travel:
             q(p.name, f"{p.name} ({reg}, travel columns): please confirm the {travel['travel_days']} travel days and the "

@@ -1,0 +1,59 @@
+{
+  "employer": "Severn Homebuilders",
+  "employees": {
+    "SH-E01": {"name": "Garrett Holm", "position": "Lead Carpenter", "duty_code": "H-420",
+      "basis": "Own crew doing framing, drywall, finish carpentry and site labor on single-family houses (business-description.md): CG-15.", "records": ["business-description.md"]},
+    "SH-E02": {"name": "Victor Amadi", "position": "Carpenter", "duty_code": "H-420",
+      "basis": "Crew carpenter on house construction (business-description.md): CG-15.", "records": ["business-description.md"]},
+    "SH-E03": {"name": "Peter Kowal", "position": "Carpenter", "duty_code": "H-420",
+      "basis": "Crew carpenter on house construction (business-description.md): CG-15.", "records": ["business-description.md"]},
+    "SH-E04": {"name": "Andre Sutton", "position": "Laborer", "duty_code": "H-420",
+      "basis": "General labor at the building site (business-description.md): CG-15.", "records": ["business-description.md"]},
+    "SH-E05": {"name": "Colin Rusk", "position": "Laborer", "duty_code": "H-420",
+      "basis": "General labor at the building site (business-description.md): CG-15.", "records": ["business-description.md"]},
+    "SH-E06": {"name": "Marissa Gale", "position": "Estimator", "duty_code": "C-110",
+      "basis": "Estimator who visits a site now and then to measure (field-notes.md, 2026-07-16). Estimating at a desk is CG-04.", "records": ["field-notes.md"]},
+    "SH-E07": {"name": "Dana Whitcomb", "position": "Office Manager", "duty_code": "C-110",
+      "basis": "Office manager who drives material and paperwork out to the sites and meets inspectors there (field-notes.md, 2026-07-16).", "records": ["field-notes.md"]},
+    "SH-E08": {"name": "Helen Ostrow", "position": "Bookkeeper", "duty_code": "C-110",
+      "basis": "Bookkeeper who stays in the office (field-notes.md): CG-04.", "records": ["field-notes.md"]}
+  },
+  "owners": {
+    "Martin Severn": {"included": false, "basis": "Has filed an election of exclusion and is not on the payroll register (business-description.md)."}
+  },
+  "site_codes": {
+    "Lot 14 Riverside Ct": "H-420",
+    "Lot 7 Mill Pond Rd": "H-420",
+    "Lot 22 Heron Way": "H-420"
+  },
+  "subcontract_work_codes": {
+    "framing": "H-420",
+    "drywall": "H-420",
+    "roofing": "R-310"
+  },
+  "subcontractor_certificate_matches": {
+    "Kent Island Roofing": "Kent Island Roofing & Siding LLC"
+  },
+  "facts": [
+    {"fact": "Severn builds single-family houses with its own crew for framing, drywall, finish carpentry and site labor, and uses subcontractors for some trades; eight employees", "record": "business-description.md"},
+    {"fact": "The owner, Martin Severn, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
+    {"fact": "Three houses were under construction; the office manager drives material and paperwork out to the sites and meets inspectors; the estimator visits a site now and then; the bookkeeper stays in the office", "record": "field-notes.md"},
+    {"fact": "Three subcontractors were paid in the period (framing, drywall, roofing); the certificates collected are the ones the owner could find", "record": "field-notes.md"},
+    {"fact": "The file holds certificates for Tenbury Ridge Framing Co. (MD-WC-448201, 2025-06-01 to 2026-12-31) and Kent Island Roofing & Siding LLC (MD-WC-517736, 2025-04-01 to 2026-01-31); none for Tidewater Drywall", "record": "insurance-certificates.csv"}
+  ],
+  "confirmations": [
+    {"about": "Martin Severn", "question": "Martin Severn (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05."}
+  ],
+  "open_items": [
+    {"about": "Dana Whitcomb: H-420 for site errands", "merge_with": "Dana Whitcomb",
+      "proposal": "Report all 59,840.70 of Dana Whitcomb's pay under H-420, the code of the house construction at the sites she visited.",
+      "why": "Her site work is delivering material and paperwork and meeting inspectors, not construction. CG-15 covers general labor at the building site, and no other code in the guide describes the work.",
+      "records": ["site-signin-log.csv", "field-notes.md"],
+      "employer_question": "Dana Whitcomb (site-signin-log.csv, field-notes.md): please describe what Dana Whitcomb did at Lot 14 Riverside Ct, Lot 7 Mill Pond Rd and Lot 22 Heron Way on each of her 11 sign-in dates, and whether she unloaded or handled material on site."},
+    {"about": "Employer's statement that all subcontractors are insured",
+      "proposal": "Use the certificates in the file, not the application's statement.",
+      "why": "The application says all subcontractors carry their own insurance. The file has no certificate for Tidewater Drywall, and Kent Island's certificate ends on 2026-01-31, before two of its payments. The records decide (HP-7).",
+      "records": ["application.md", "insurance-certificates.csv", "subcontractor-payments.csv"]}
+  ],
+  "unused_records": {}
+}

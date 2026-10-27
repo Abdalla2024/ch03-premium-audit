@@ -1,0 +1,44 @@
+{
+  "employer": "Harbor Point Legal",
+  "employees": {
+    "HP-E01": {"name": "Marcus Adeyemi", "position": "Associate Attorney", "duty_code": "C-110",
+      "basis": "Attorney: professional staff who work in the office are CG-04. Court and closings are not job sites, and no one does physical work outside the office (field-notes.md, 2026-07-14).",
+      "records": ["field-notes.md"]},
+    "HP-E02": {"name": "Julia Fenwick", "position": "Associate Attorney", "duty_code": "C-110",
+      "basis": "Attorney: professional staff who work in the office are CG-04 (field-notes.md, 2026-07-14).",
+      "records": ["field-notes.md"]},
+    "HP-E03": {"name": "Tomas Reyes", "position": "Paralegal", "duty_code": "C-110",
+      "basis": "Paralegal: professional office staff, CG-04. Field notes say no one on staff does physical work outside the office.",
+      "records": ["field-notes.md"]},
+    "HP-E04": {"name": "Ellen Short", "position": "Legal Secretary", "duty_code": "C-110",
+      "basis": "Legal secretary: correspondence in the office is CG-04 (field-notes.md).",
+      "records": ["field-notes.md"]},
+    "HP-E05": {"name": "Gwen Talbot", "position": "Office Manager", "duty_code": "C-110",
+      "basis": "Office manager in the office suite: CG-04 (field-notes.md).",
+      "records": ["field-notes.md"]}
+  },
+  "owners": {
+    "Catherine Harbor": {"included": false, "basis": "Founding partner; has filed an election of exclusion and is not on the payroll register (business-description.md)."}
+  },
+  "site_codes": {
+    "Sallowmere Court Condominiums": null
+  },
+  "facts": [
+    {"fact": "Five-employee law office in Annapolis; no other locations, no subcontractors", "record": "business-description.md"},
+    {"fact": "The founding partner, Catherine Harbor, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
+    {"fact": "Attorneys appear in court and meet clients at closings, neither of which is a job site; no one on staff does physical work outside the office; no travel pay", "record": "field-notes.md"},
+    {"fact": "The payroll register agrees with the general ledger", "record": "field-notes.md"},
+    {"fact": "site-signin-log.csv records Tomas Reyes at Sallowmere Court Condominiums on six dates", "record": "site-signin-log.csv"}
+  ],
+  "confirmations": [
+    {"about": "Catherine Harbor", "question": "Catherine Harbor (business-description.md): please send a copy of the founding partner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05."}
+  ],
+  "open_items": [
+    {"about": "Tomas Reyes: what the Sallowmere Court Condominiums visits were", "merge_with": "Tomas Reyes",
+      "proposal": "Keep Tomas Reyes under C-110. The visits look like client or closing work, not field work.",
+      "why": "The field notes say no one does physical work outside the office and that closings are not job sites, so the sign-ins may not be 'job site' days in the sense of HP-4. Why a law office has a site sign-in log at all is not explained.",
+      "records": ["site-signin-log.csv", "field-notes.md"],
+      "employer_question": "Tomas Reyes (site-signin-log.csv): please describe what Tomas Reyes did at Sallowmere Court Condominiums on 2025-09-16, 2025-10-22, 2025-12-09, 2026-01-28, 2026-03-04 and 2026-04-15 (for example a closing, document delivery or an inspection), and say who keeps this sign-in log."}
+  ],
+  "unused_records": {}
+}

@@ -3,9 +3,9 @@
 Examples (from the repository root):
 
     python3 skills/class-code-assistant/scripts/run.py --all
-    python3 skills/class-code-assistant/scripts/run.py --employer patuxent-electric
-    python3 skills/class-code-assistant/scripts/run.py --local path/to/sources --employer new-employer
-    python3 skills/class-code-assistant/scripts/run.py --init-worksheet new-employer
+    python3 skills/class-code-assistant/scripts/run.py --employer <employer-slug>
+    python3 skills/class-code-assistant/scripts/run.py --local path/to/sources --employer <employer-slug>
+    python3 skills/class-code-assistant/scripts/run.py --init-worksheet <employer-slug>
 """
 
 import argparse
@@ -55,7 +55,7 @@ def init_worksheet(rec, path):
         "owners": {},
         "work_type_codes": {t: None for t in sorted({r["work_type"] for r in rec["timesheets"]})},
         "site_codes": {s: None for s in sorted({r["site"] for r in rec["signins"] if r["employee_id"]})},
-        "route_code": None if rec["route_log"] else "n/a",
+        "route_code": None,
         "subcontract_work_codes": {w: None for w in sorted({r["work"] for r in rec["sub_payments"]})},
         "subcontractor_certificate_matches": {},
         "facts": [],

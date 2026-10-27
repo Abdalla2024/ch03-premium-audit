@@ -58,12 +58,12 @@ def report(results, guide, run):
         "",
         "## Which two employers to call first",
         "",
-        "The order ranks employers by how much payroll the records move away from the employer's own split. That is "
-        "the sum of the absolute differences per code, in dollars of payroll, not premium. Ties go to the employer "
-        "with more open items. The two at the top have the most payroll resting on records the employer still has to "
-        "confirm.",
+        "The order ranks employers by how far the first pass is from the employer's own split. The measure is the sum "
+        "of the absolute per-code differences, in dollars of payroll (not premium); payroll moved from one code to "
+        "another counts once out and once in. Ties go to the employer with more open items. This ranking rule is the "
+        "Skill's own proposal: the auditor has not said how she wants calls prioritised (open item).",
         "",
-        "| Order | Employer | Payroll moved vs employer split | Employer reported | First pass | Open items | Employer questions |",
+        "| Order | Employer | Sum of per-code differences | Employer reported | First pass | Open items | Employer questions |",
         "|---|---|---|---|---|---|---|",
     ]
     ordered = call_order(results)
@@ -72,7 +72,8 @@ def report(results, guide, run):
                    f"| {fmt(sum(r.totals.values(), ZERO))} | {len(r.open_items)} | {len(r.questions)} |")
     out.append("")
     for i, r in enumerate(ordered[:2], 1):
-        out.append(f"{i}. **{r.rec['employer_name']}**: {fmt(change(r))} of payroll moves. The largest drivers are "
+        out.append(f"{i}. **{r.rec['employer_name']}**: per-code differences total {fmt(change(r))} (net "
+                   f"{_signed(sum(r.differences().values(), ZERO))}). The largest drivers are "
                    f"{_drivers(r)}. {len(r.open_items)} open item(s) depend on the employer's confirmation.")
     out += ["", "## Summary", "", "| Employer | Employer's split | Decision rests on |", "|---|---|---|"]
     for r in results:
@@ -124,10 +125,13 @@ def _employer_section(r, guide):
         out += ["No difference. No adjustment was needed.", ""]
     else:
         for code, d in r.differences().items():
-            if d:
-                why = [a for a in r.adjustments if a.code == code] or []
-                out.append(f"- **{code}** {_signed(d)}: " + ("; ".join(f"{a.about} ({a.kind.lower()}, {fmt(a.amount)})" for a in why)
-                                                          or "payroll moved to other codes; see the adjustments below") + ".")
+            if not d:
+                continue
+            into = [f"{a.about} ({a.kind.lower()}, {fmt(a.amount)})" for a in r.adjustments if a.code == code]
+            out_of = [f"{p.name} ({fmt(p.wages)} reported here, now " + ", ".join(f"{fmt(l.amount)} {l.code}" for l in p.lines) + ")"
+                      for p in r.people if p.employer_code == code and {l.code for l in p.lines} != {code}]
+            parts = (["in: " + "; ".join(into)] if into else []) + (["out: " + "; ".join(out_of)] if out_of else [])
+            out.append(f"- **{code}** {_signed(d)}: " + (". ".join(parts) or "see the adjustments below") + ".")
         out.append(f"- How the employer's split was compared: {r.inference}.")
         out.append("")
         out += ["### Adjustments", "", "| # | Employee or payment | Adjustment | Amount (USD) | Code | Detail | Records | Rule |",

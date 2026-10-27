@@ -1,0 +1,50 @@
+{
+  "employer": "Larkspur Lane Bistro",
+  "employees": {
+    "LL-E01": {"name": "Anton Varga", "position": "Sous Chef", "duty_code": "F-710",
+      "basis": "Restaurant kitchen staff (CG-41). The field notes describe the restaurant kitchen and dining room; no record puts him on the catering crew.", "records": ["field-notes.md"]},
+    "LL-E02": {"name": "Bea Lindell", "position": "Line Cook", "duty_code": "F-710",
+      "basis": "Restaurant kitchen staff (CG-41).", "records": ["field-notes.md"]},
+    "LL-E03": {"name": "Omar Haddad", "position": "Line Cook", "duty_code": "F-710",
+      "basis": "Restaurant kitchen staff (CG-41).", "records": ["field-notes.md"]},
+    "LL-E04": {"name": "Sophie Tran", "position": "Server", "duty_code": "F-710",
+      "basis": "Restaurant server (CG-41).", "records": ["field-notes.md"]},
+    "LL-E05": {"name": "Will Garner", "position": "Server", "duty_code": "F-710",
+      "basis": "Restaurant server (CG-41).", "records": ["field-notes.md"]},
+    "LL-E06": {"name": "Jose Melendez", "position": "Dishwasher", "duty_code": "F-710",
+      "basis": "Restaurant dishwasher (CG-41).", "records": ["field-notes.md"]},
+    "LL-E07": {"name": "Hannah Pryor", "position": "Catering Lead", "duty_code": "F-720",
+      "basis": "Catering lead: prepares event food in the restaurant kitchen and serves it at the venue (field-notes.md, 2026-07-21). CG-42 covers the catering crew of an employer that also runs a restaurant.", "records": ["field-notes.md"]},
+    "LL-E08": {"name": "Ivan Petrov", "position": "Event Cook", "duty_code": "F-720",
+      "basis": "Catering crew member (field-notes.md): CG-42.", "records": ["field-notes.md"]},
+    "LL-E09": {"name": "Clara Bose", "position": "Event Server", "duty_code": "F-720",
+      "basis": "Catering crew member (field-notes.md): CG-42.", "records": ["field-notes.md"]}
+  },
+  "owners": {
+    "Rosa Delacroix": {"included": false, "basis": "Has filed an election of exclusion and is not on the payroll register (business-description.md)."}
+  },
+  "facts": [
+    {"fact": "70-seat restaurant that also caters weddings and office events at customers' venues with a small catering crew; nine employees; books kept by an outside accountant", "record": "business-description.md"},
+    {"fact": "The owner, Rosa Delacroix, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
+    {"fact": "The catering lead and her two crew members prepare event food in the restaurant kitchen and serve it at the venue; on quiet weeks they work restaurant shifts", "record": "field-notes.md"},
+    {"fact": "The owner's sales summary splits monthly receipts between the dining room and off-site catering", "record": "field-notes.md, gross-receipts.csv"}
+  ],
+  "confirmations": [
+    {"about": "Rosa Delacroix", "question": "Rosa Delacroix (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05."},
+    {"about": "Restaurant staff", "question": "Anton Varga, Bea Lindell, Omar Haddad, Sophie Tran, Will Garner and Jose Melendez (payroll-register.csv): please confirm that none of them worked catering events away from the restaurant during the audit period, or list the event dates for anyone who did."}
+  ],
+  "open_items": [
+    {"about": "Catering crew restaurant shifts (Hannah Pryor, Ivan Petrov, Clara Bose)",
+      "proposal": "Keep each catering crew member's whole pay under F-720, as the employer reported.",
+      "why": "The field notes say the catering crew works restaurant shifts on quiet weeks, but the file has no time record showing how many. House practice does not split one person's pay between codes, except for route ride-alongs (HP-2), and their main work is catering (CG-42). If their records showed mostly restaurant shifts, the code would change.",
+      "records": ["field-notes.md", "payroll-register.csv"],
+      "employer_question": "Hannah Pryor, Ivan Petrov and Clara Bose (field-notes.md): please send the event schedule or timesheets for the audit period showing the days each worked catering events and the days each worked restaurant shifts."},
+    {"about": "Gross receipts not used to split payroll",
+      "proposal": "Do not allocate payroll from gross-receipts.csv.",
+      "why": "Premium is based on payroll (CG-01, CG-03). Receipts are sales, and house practice gives no rule for using them to divide payroll. The receipts are noted only as context: off-site catering is about 22% of receipts.",
+      "records": ["gross-receipts.csv"]}
+  ],
+  "unused_records": {
+    "gross-receipts.csv": "receipts are sales, not payroll (CG-01, CG-03); see the open item on gross receipts."
+  }
+}

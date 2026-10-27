@@ -1,0 +1,43 @@
+{
+  "employer": "Patuxent Electric",
+  "employees": {
+    "PE-E01": {"name": "Raymond Dunmore", "position": "Owner, Master Electrician", "duty_code": "E-510",
+      "basis": "Owner who leads a crew on site most days and pulls wire himself (field-notes.md, 2026-07-17). Electrical wiring is CG-21.",
+      "records": ["field-notes.md", "site-signin-log.csv"]},
+    "PE-E02": {"name": "Curtis Bell", "position": "Journeyman Electrician", "duty_code": "E-510",
+      "basis": "Electrician on residential, light commercial and out-of-town wiring jobs (business-description.md, field-notes.md): CG-21.", "records": ["business-description.md"]},
+    "PE-E03": {"name": "Hector Ruiz", "position": "Journeyman Electrician", "duty_code": "E-510",
+      "basis": "Electrician (business-description.md, field-notes.md): CG-21.", "records": ["business-description.md"]},
+    "PE-E04": {"name": "Aaron Weiss", "position": "Journeyman Electrician", "duty_code": "E-510",
+      "basis": "Electrician (business-description.md, field-notes.md): CG-21.", "records": ["business-description.md"]},
+    "PE-E05": {"name": "Tyrone Banks", "position": "Electrician", "duty_code": "E-510",
+      "basis": "Electrician (business-description.md, field-notes.md): CG-21.", "records": ["business-description.md"]},
+    "PE-E06": {"name": "Kyle Brandt", "position": "Apprentice Electrician", "duty_code": "E-510",
+      "basis": "Apprentice electrician on the wiring crew (business-description.md): CG-21.", "records": ["business-description.md"]},
+    "PE-E07": {"name": "Linda Marsh", "position": "Office Administrator", "duty_code": "C-110",
+      "basis": "Runs the office and never goes to jobs (field-notes.md, 2026-07-17); no entries in site-signin-log.csv. CG-04.",
+      "records": ["field-notes.md"]}
+  },
+  "owners": {
+    "PE-E01": {"included": true, "field_work": true, "field_code": "E-510",
+      "basis": "has not filed an election of exclusion (business-description.md); leads a crew on site most days and pulls wire (field-notes.md); signed in at job sites on 214 days (site-signin-log.csv)",
+      "records": ["business-description.md", "field-notes.md", "site-signin-log.csv"]}
+  },
+  "facts": [
+    {"fact": "Seven people on the payroll register, including the owner, Raymond Dunmore, who has not filed an election of exclusion; no subcontractors in the period", "record": "business-description.md"},
+    {"fact": "The owner leads a crew on site most days and pulls wire himself; the office administrator never goes to jobs", "record": "field-notes.md"},
+    {"fact": "site-signin-log.csv has 214 job-site sign-in days, all for Raymond Dunmore", "record": "site-signin-log.csv"},
+    {"fact": "Electricians on the Hagerstown job were paid a flat amount per day away on top of wages, in its own register column", "record": "field-notes.md, payroll-register.csv"}
+  ],
+  "confirmations": [
+    {"about": "Subcontractors", "question": "Business description, APP-PE-0388: please confirm in writing that Patuxent Electric paid no subcontractors between 2025-07-07 and 2026-07-05."}
+  ],
+  "open_items": [
+    {"about": "Employer treats the out-of-town allowance as an expense",
+      "proposal": "Apply house practice: exclude up to 47.00 per worker per travel day and count the rest as payroll.",
+      "why": "The application says travel pay is an expense and was left out. CG-03 excludes documented reimbursements. The team's house practice caps the exclusion for out-of-town crews at 47.00 per day (HP-6). The register shows a flat per-day amount, not documented costs.",
+      "records": ["application.md", "payroll-register.csv"],
+      "employer_question": "Application APP-PE-0388: please send the per-day allowance policy and the travel day log (dates, worker and job) for the Hagerstown job, so the travel_days and travel_allowance_paid columns in payroll-register.csv can be confirmed."}
+  ],
+  "unused_records": {}
+}

@@ -1,0 +1,46 @@
+{
+  "employer": "Annapolis Courier",
+  "employees": {
+    "AC-E01": {"name": "Derek Nolan", "position": "Driver", "duty_code": "T-610",
+      "basis": "Van driver: route-log.csv lists AC-E01 as the driver of route AR-1 on every route day in the audit period. Drivers of vans delivering parcels and documents are CG-31.",
+      "records": ["route-log.csv"]},
+    "AC-E02": {"name": "Maria Santos", "position": "Driver", "duty_code": "T-610",
+      "basis": "Van driver: route-log.csv lists AC-E02 as the driver of route AR-2 on every route day in the audit period (CG-31).",
+      "records": ["route-log.csv"]},
+    "AC-E03": {"name": "Felix Grant", "position": "Driver", "duty_code": "T-610",
+      "basis": "Van driver: route-log.csv lists AC-E03 as the driver of route AR-3 on every route day in the audit period (CG-31).",
+      "records": ["route-log.csv"]},
+    "AC-E04": {"name": "Lena Ortiz", "position": "Dispatcher", "duty_code": "C-110",
+      "basis": "Dispatcher in the dispatch office (field-notes.md, 2026-07-20). Dispatching by telephone or radio is CG-04.",
+      "records": ["field-notes.md"]},
+    "AC-E05": {"name": "Paul Haskins", "position": "Dispatcher", "duty_code": "C-110",
+      "basis": "Dispatcher, seen on the radio during the visit (field-notes.md, 2026-07-20). Dispatching by telephone or radio is CG-04.",
+      "records": ["field-notes.md"]},
+    "AC-E06": {"name": "Irene Voss", "position": "Bookkeeper", "duty_code": "C-110",
+      "basis": "Bookkeeping is CG-04. The only evidence of duties is the register title; no record shows other work.",
+      "records": []}
+  },
+  "owners": {
+    "Gloria Rhee": {"included": false, "basis": "Has filed an election of exclusion and is not on the payroll register (business-description.md); not counted under CG-05."}
+  },
+  "route_code": "T-610",
+  "facts": [
+    {"fact": "Three van routes run six days a week; six employees, paid weekly", "record": "business-description.md"},
+    {"fact": "The owner, Gloria Rhee, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
+    {"fact": "The route log lists every route day with its driver and anyone riding along; pay weeks run Monday to Sunday", "record": "field-notes.md"},
+    {"fact": "On 2026-07-20, after the audit period ended, dispatcher Lena Ortiz left with the AR-2 van and came back at noon", "record": "field-notes.md"},
+    {"fact": "Weekly gross pay per employee sums to the register's wages_paid for every employee", "record": "weekly-payroll.csv, payroll-register.csv"}
+  ],
+  "confirmations": [
+    {"about": "Gloria Rhee", "question": "Gloria Rhee (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05, since the first pass leaves her pay out of payroll on that basis."},
+    {"about": "Irene Voss", "question": "Irene Voss (payroll-register.csv): please confirm that Irene Voss's duties were confined to bookkeeping in the office for the whole audit period, and that she never rode on a delivery route. The route log shows no ride-alongs for her."}
+  ],
+  "open_items": [
+    {"about": "Employer's statement about dispatcher ride-alongs",
+      "proposal": "Use the route log, not the application's note, for the ride-along weeks.",
+      "why": "The application says the dispatchers work the phones and that Lena 'rides along about two days a week ... at most two fifths of her time'. route-log.csv records 60 ride-along days for Lena Ortiz and 2 for Paul Haskins in the audit period, so the note understates Paul's road time and does not match Lena's pattern. The records decide (HP-7).",
+      "records": ["application.md", "route-log.csv"],
+      "employer_question": "Application APP-AC-0529 note: please explain the statement that the dispatchers work the phones, when route-log.csv records Paul Haskins (AC-E05) as a ride-along on 2 route days and Lena Ortiz (AC-E04) on 60 route days."}
+  ],
+  "unused_records": {}
+}

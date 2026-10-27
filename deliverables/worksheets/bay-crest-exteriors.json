@@ -1,0 +1,64 @@
+{
+  "employer": "Bay Crest Exteriors",
+  "employees": {
+    "BC-E01": {"name": "Darnell Price", "position": "Roof Foreman", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work (field-notes.md).", "records": ["field-notes.md"]},
+    "BC-E02": {"name": "Kevin Moraes", "position": "Roofer", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E03": {"name": "Sam Okonjo", "position": "Roofer", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E04": {"name": "Luis Carrillo", "position": "Roofer", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E05": {"name": "Brian Tull", "position": "Roofer", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E06": {"name": "Owen Petrakis", "position": "Roofer", "duty_code": "R-310",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E07": {"name": "Rafael Duarte", "position": "Siding Installer", "duty_code": "R-320",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E08": {"name": "Jamal Whitfield", "position": "Siding Installer", "duty_code": "R-320",
+      "basis": "Crew member; crew-timesheets.csv records daily work by job and type of work.", "records": []},
+    "BC-E09": {"name": "Teresa Lindqvist", "position": "Estimator", "duty_code": "C-110",
+      "basis": "Estimator. Estimating at a desk is CG-04, but on the visit day she was measuring a house for a quote (field-notes.md, 2026-07-15), and office staff sign the site sign-in sheet when they visit a job.",
+      "records": ["field-notes.md"]},
+    "BC-E10": {"name": "Nora Beckett", "position": "Bookkeeper", "duty_code": "C-110",
+      "basis": "Bookkeeper who works in the office (field-notes.md); bookkeeping is CG-04. No site sign-ins or timesheets for her.",
+      "records": ["field-notes.md"]}
+  },
+  "owners": {
+    "Philip Crestwood": {"included": false, "basis": "Has filed an election of exclusion and is not on the payroll register (business-description.md)."}
+  },
+  "work_type_codes": {
+    "roofing": "R-310",
+    "siding": "R-320",
+    "gutters": "R-320"
+  },
+  "site_codes": {
+    "Arnold re-roof": "R-310",
+    "Severna Park re-roof": "R-310",
+    "Stevensville siding": "R-320"
+  },
+  "facts": [
+    {"fact": "Bay Crest replaces roofs and installs siding and gutters; ten employees; no subcontractors in the period", "record": "business-description.md"},
+    {"fact": "The owner, Philip Crestwood, has filed an election of exclusion and is not on the payroll register", "record": "business-description.md"},
+    {"fact": "On the visit day eight people were out on two jobs (one roof, one siding) and the estimator was measuring a house for a quote", "record": "field-notes.md"},
+    {"fact": "Crew time is recorded on the crew timesheets by job and type of work; office staff sign the site sign-in sheet when they visit a job", "record": "field-notes.md"},
+    {"fact": "crew-timesheets.csv has entries for BC-E01 to BC-E08 only, all 8-hour days", "record": "crew-timesheets.csv"}
+  ],
+  "confirmations": [
+    {"about": "Philip Crestwood", "question": "Philip Crestwood (business-description.md): please send a copy of the owner's election of exclusion that was in force for the audit period 2025-07-07 to 2026-07-05."},
+    {"about": "Subcontractors", "question": "Business description, APP-BCE-0217: please confirm in writing that Bay Crest Exteriors paid no subcontractors between 2025-07-07 and 2026-07-05, and send the general ledger subcontract account for the period."}
+  ],
+  "open_items": [
+    {"about": "Employer's split leans to the clerical code",
+      "proposal": "Allocate from crew-timesheets.csv and site-signin-log.csv, not from the application.",
+      "why": "The application puts 7 of 10 employees under C-110 and says most people coordinate jobs. The timesheets record eight crew members working roofing, siding and gutters every working day, and the field notes saw eight people out on two jobs. The records decide (HP-7).",
+      "records": ["application.md", "crew-timesheets.csv", "field-notes.md"],
+      "employer_question": "Application APP-BCE-0217: please explain why seven employees were reported under C-110 when crew-timesheets.csv records BC-E01 to BC-E08 on roofing, siding and gutter jobs for the whole audit period, and name the seven people the application counted as office staff."},
+    {"about": "Teresa Lindqvist: site work types read from site names",
+      "proposal": "Treat 're-roof' sites as R-310 work and 'siding' sites as R-320 work.",
+      "why": "site-signin-log.csv gives only site names. The work done at each site is read from the name; no record links the sign-in sites to timesheet job IDs. Her code depends on this: 5 re-roof days against 4 siding days, and one of the re-roof days is 2025-12-25.",
+      "records": ["site-signin-log.csv"],
+      "employer_question": "Teresa Lindqvist (site-signin-log.csv): please confirm what work Bay Crest was doing at Arnold re-roof, Severna Park re-roof and Stevensville siding on each date she signed in, and what she did there (measuring, inspecting, or working with the crew)."}
+  ],
+  "unused_records": {}
+}
